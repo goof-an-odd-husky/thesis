@@ -1,0 +1,25 @@
+% !TEX root = ../bachelor-thesis.tex
+
+\chapter{Introduction}
+
+\section{Background and Motivation}
+
+Ground vehicles -- very important field; especially for tedious, far-away, or dangerous tasks.
+
+It is often infeasible to manually control such vehicles due to their sheer number and task volume. Physical barriers like distance or signal interference mean manual control can fail. Therefore, autonomous systems are a necessity for the robot to complete its task and navigate to desired locations independently.
+
+Outdoors, there are challenges of an unpredictable environment: unexpected/moving obstacles, surrounding agents (like pedestrians) don't cooperate, uneven terrain, etc.
+
+Today, there are ready-made solutions for autonomous navigation (like default Nav2 in ROS). However, modern outdoor systems often rely on heavy sensors (3D LiDAR, RGB-D cameras) and algorithms to process this data (Visual SLAM, MPPI). These require high computational resources, lots of RAM, and sometimes GPUs. This is expensive, it drains battery and not always possible on simple low-cost robots.
+
+Therefore, there is a motivation to see what can be accomplished using a minimal, lightweight sensor suite. By avoiding heavy computations, we can create a more accessible and energy-efficient system.
+
+Instead of calculating a map from scratch using SLAM, we can use existing, semantic data like OpenStreetMap (OSM) for global routing.
+Instead of 3D point clouds or image processing, we can use a simple 2D LiDAR to handle immediate, dynamic obstacles (like pedestrians or trees).
+Instead of visual odometry, we can rely on standard GPS fused with an IMU and wheel odometry.
+
+Together, these lightweight components theoretically provide all the necessary data for a robot to navigate outdoors (albeit in lower fidelity and density, higher sparcity). This thesis aims to prove that such a minimal setup is actually viable in the real world.
+
+\section{Problem Statement}
+
+So the problem I'm trying to solve is to navigate Husky A200 - a ground differentially driven robot - outdoors in a park environment, specifically on pedestrian paths in a known environment (Stryiskyi Park in Lviv), from a start point to a target point without human intervention. The system should use as few computational resources and sensors as possible (relying mainly on 2D LiDAR, GPS, IMU, and Odometry).

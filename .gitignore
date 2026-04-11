@@ -1,0 +1,21 @@
+# LaTeX auxiliary files
+*.aux
+*.lof
+*.lot
+*.toc
+*.out
+
+# Bibliography generated files
+*.bbl
+*.blg
+*-blx.bib
+
+# Build logs
+*.log
+
+# SyncTeX (editor sync)
+*.synctex.gz
+
+# Build tool caches
+*.rubbercache
+*.run.xml
