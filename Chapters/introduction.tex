@@ -8,7 +8,7 @@ Ground vehicles -- very important field; especially for tedious, far-away, or da
 
 It is often infeasible to manually control such vehicles due to their sheer number and task volume. Physical barriers like distance or signal interference mean manual control can fail. Therefore, autonomous systems are a necessity for the robot to complete its task and navigate to desired locations independently.
 
-Outdoors, there are challenges of an unpredictable environment: unexpected/moving obstacles, surrounding agents (like pedestrians) don't cooperate, uneven terrain, etc.
+Outdoors, there are challenges of an unpredictable environment: unexpected/moving obstacles, surrounding agents (like other vehicles or pedestrians) don't cooperate, uneven terrain, etc.
 
 Today, there are ready-made solutions for autonomous navigation (like default Nav2 in ROS). However, modern outdoor systems often rely on heavy sensors (3D LiDAR, RGB-D cameras) and algorithms to process this data (Visual SLAM, MPPI). These require high computational resources, lots of RAM, and sometimes GPUs. This is expensive, it drains battery and not always possible on simple low-cost robots.
 
@@ -18,8 +18,23 @@ Instead of calculating a map from scratch using SLAM, we can use existing, seman
 Instead of 3D point clouds or image processing, we can use a simple 2D LiDAR to handle immediate, dynamic obstacles (like pedestrians or trees).
 Instead of visual odometry, we can rely on standard GPS fused with an IMU and wheel odometry.
 
-Together, these lightweight components theoretically provide all the necessary data for a robot to navigate outdoors (albeit in lower fidelity and density, higher sparcity). This thesis aims to prove that such a minimal setup is actually viable in the real world.
+Together, these lightweight components theoretically provide all the necessary data for a robot to navigate (albeit in lower fidelity and density, higher sparcity). This thesis aims to prove that such a minimal setup is actually viable in the real world.
 
-\section{Problem Statement}
+The setup includes a ground differentially driven robot outdoors in a park environment, specifically on pedestrian paths in a known (topologically, but not dynamically) environment. It should navigate autonomously from a start point to a target point without human intervention.
 
-So the problem I'm trying to solve is to navigate Husky A200 - a ground differentially driven robot - outdoors in a park environment, specifically on pedestrian paths in a known environment (Stryiskyi Park in Lviv), from a start point to a target point without human intervention. The system should use as few computational resources and sensors as possible (relying mainly on 2D LiDAR, GPS, IMU, and Odometry).
+% TODO: should I mention, why pedestrian? Husky A200 is pretty small and not suited for car roads. Also it's slow (1 m/s); there are fewer rules to follow (changing lanes, traffic signs and lights etc)
+
+\section{Objectives}
+
+\begin{itemize}
+\item Path planning -- find a global route (using graph search algorithms like A*) based on environment map (OpenStreetMap XML data).
+\item Obstacle detection -- process 2D LiDAR data to find obstacles.
+\item Local navigation -- combine spatial localization (GPS and IMU+Wheel Odometry -- sensor fusion via Extended Kalman Filter) and local path planning (using an optimization algorithm Timed Elastic Band) to avoid obstacles and follow the global path.
+\end{itemize}
+
+% TODO if really did it:
+Conducted real-world experiments in public environment (Stryyskyi Park). Also in simulation -- more times here. Evaluated the system's success rate, safety, and travel time. Provided a baseline comparison against the standard Nav2 implementation.
+
+\section{Structure Of The Thesis}
+
+% TODO
