@@ -12,4 +12,53 @@ Unlike two-wheeled systems, the four-wheeled configuration introduces lateral sl
 
 \section{Spatial Representation}
 
+\subsection{Coordinate Systems}
+
+GPS sensors output data in geodetic coordinates (latitude, longitude, altitude). Trajectory planners operate in Cartesian coordinates. Geodetic coordinates must be projected onto a local tangent plane in order for local planner to calculate distances in meters.
+
+\subsection{Graph-Based Map Representation}
+
+For global planner to generate paths, it needs the map to be abstracted into a directed graph where vertices represent discrete spatial coordinates (intersections) and edges represent traversable paths (roads). The nodes in this network exist only at intersections. Complex paths made of multiple segments are simplified into single edges connecting these intersections. The weight of each edge is the sum of all its original segment lengths. This preserves distance accuracy while reducing the number of nodes the planning algorithm must evaluate.
+
+The A* algorithm navigates this graph. It calculates the shortest path by minimizing the function $f(n) = g(n) + h(n)$, where $g(n)$ is the exact cost from the start node to node $n$ and $h(n)$ is the estimated heuristic cost. For A* to guarantee the mathematically shortest path, the heuristic must be admissible, meaning it must never overestimate the actual cost to the goal. Because a straight line is always the shortest possible distance between two points, the Euclidean heuristic is admissible.
+
+With the heuristic cost in place, the algorithm first processes paths closer to the goal, thus the frontier of the search stretches in an elliptical shaped, pointing at the target. This naturally reduces the number of nodes processed, while preserving accuracy. % TODO: keep or redundant?
+
+\section{Trajectory Optimization}
+
+The Timed Elastic Band (TEB) approach formulates local navigation as a multi-objective optimization problem.
+
+The trajectory is a sequence of intermediate poses between them. Each pose consists of $x,y$ coordinates (in meters), $\theta$ (heading angle, in radians) and $\Delta t$ (time interval, in seconds). The trajectory is initialized as the global path, with $\Delta t$ and $\theta$ linearly interpolated.
+
+The trajectory is then deformed based on constraints and obstacles. The problem is framed as a non-linear least squares problem to be optimized. The robot's poses act as the parameters. The physical and spatial constraints act as cost functions (or residuals). The residuals might include obstacle distance cost, kinematic cost, time cost. The optimization engine minimizes a weighted sum of these cost functions.
+
+Minimizing these costs requires calculating Jacobians -- matrices of partial derivatives indicating how changes in the trajectory parameters affect the total cost. These can be calculated analytically (either manually or automatically) or numerically (using finite differences at runtime).
+
+A solver like Ceres (or g2o, if framing the problem as a Hyper-Graph optimization) uses Jacobians to find gradient of the cost functions. Because trajectory constraints usually affect adjacent poses, the resulting mathematical system is highly sparse. Ceres applies sparse factorization methods (such as Cholesky decomposition) to efficiently solve the equations, iteratively updating the parameters until it converges on a smooth, physically feasible trajectory.
+
+\section{Sensor Fusion}
+
+Sensors contain noise and inherent inaccuracies. Wheel odometry accumulates drift from mechanical slippage, while IMU exhibits integration drift. Small offsets in IMU sensor bias and noise result in quadratic position error growth and orientation errors caused by gravity leakage. Global Positioning System (GPS) sensors provide absolute global coordinates but suffer from high-frequency noise and interference under tree cover or near structures.
+
+The Kalman Filter fuses sensor streams into a single reliable state estimate. It maintains a state vector and a covariance matrix, which represents the system's current uncertainty for each sensor. It uses IMU and wheel odometry to continuously predict the robot's next state, but with time uncertainty grows. GPS is used to correct the predicted state upon measurement and reduce uncertainty.
+
+The standard Kalman Filter assumes linear system dynamics. However, mobile robots involve non-linear movements, such as turning and circular trajectories, which require trigonometric functions. The Extended Kalman Filter addresses this by linearizing motion and models at the current state estimate (achieved through Taylor series expansion).
+
+This fusion also ensures that even if a sensor like GPS becomes temporarily unavailable, the robot can continue to navigate using its internal motion model until the absolute signal is restored.
+
+\section{Geometric Feature Extraction}
+
+2D LiDAR outputs data in polar coordinates (distance and angle). To be used by the optimization engine, this point cloud must be segmented and abstracted into geometric primitives (lines and circles) in Cartesian space.
+
+\subsection{Clustering}
+
+Point clouds are first grouped into discrete clusters using distance-based segmentation. Points are assigned to a single object if the Euclidean distance between consecutive measurements $P_i$ and $P_{i+1}$ is below a threshold. Isolated points or clusters with insufficient density are rejected as noise.
+
+\subsection{Line Fitting}
+
+Line extraction uses the Split-and-Merge algorithm. First, a chord is drawn between the cluster's endpoints. The algorithm calculates the perpendicular distance from every point to this chord. If the maximum distance exceeds an error threshold, the cluster is split at that point into two sub-scans, and the process recurses. The result is a set of linear segments that approximate complex shapes like walls or curbs.
+
+\subsection{Circle Fitting}
+
+For clusters identified as obstacles more similar to circles (such as trees, poles, or people), geometric parameters (center and radius) are extracted using another algorithm. It selects three points: the two extremes ($P_1$, $P_3$) and a central point ($P_2$) that best represents the arc's curvature. Perpendicular bisectors are constructed for the secant lines $P_1P_2$ and $P_2P_3$. The intersection of these bisectors defines the circle's center. This method provides an analytical solution for the center.
 
