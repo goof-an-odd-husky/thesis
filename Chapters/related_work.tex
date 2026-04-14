@@ -2,20 +2,47 @@
 
 \chapter{Related Work}
 
+\section{Path and Trajectory Planning}
+
 The problem of autonomous navigation classically divided into:
 \begin{itemize}
-  \item Global path planning
-  \item Local trajectory planning/obstacle avoidance
+	\item Global path planning
+	\item Local trajectory planning/obstacle avoidance
 \end{itemize}
 
 Global -- graph-based approaches like Dijkstra's or A*, because reliable and optimal on static maps.
 
 But when moving in dynamic environments, real-time local planning is required. Early approaches, such as the Artificial Potential Fields (APF) method, modeled the environment as a physical field: the goal attracts, the obstacles repel. But it suffered from local minimums and worked worse with tight gaps. Later, the Vector Field Histogram (VFH) was introduced: simpler and with better performance, though it struggled with complex paths and kinematic constraints of vehicles.
 
-There's a widely used Dynamic Window Approach (DWA), which takes a set of feasible new velocities for the next few seconds, checks each one for obstacles, goal etc. → chooses the best. But it struggles to produce smooth complex paths. Therefore, it's included in ROS NAV2 stack, but as a simpler and less powerful planner.
+There is a widely used Dynamic Window Approach (DWA), which takes a set of feasible new velocities for the next few seconds, checks each one for obstacles, goal etc. → chooses the best. The resulting trajectory is addresses the kinematics (smooth geometry of the path), but it struggles to produce paths for complex environments. Therefore, it is included in ROS NAV2 stack, but as a simpler and less powerful planner.
 
-Then there's Elastic Band planner, which tries to predict the whole path as a band between two points, which stretches to avoid obstacles. But it doesn't produce a trajectory, it only provides with a geometric path (instead of telling the controller what speeds to drive at what points in time, it only provides a path -- a sequence of points the robot should follow).
+Then there is Elastic Band planner, which tries to predict the whole path as a band between two points, which stretches to avoid obstacles. But it does not produce a trajectory, it only provides with a geometric path (instead of telling the controller what speeds to drive at what points in time, it only provides a path -- a sequence of points the robot should follow).
 
-Timed Elastic Band (TEB) is a continuation, which shifts toward the Model Predictive Control (MPC) paradigm. MPC-based algorithms optimize a continuous trajectory, while enforcing kinodynamic constraints -- the geometrical and physical (acceleration, forces etc.) constraints. TEB optimizes the trajectory for time and distance to obstacles. More recently, sampling-based MPC algorithms like Model Predictive Path Integral Control (MPPI) have emerged for aggressive, high-speed driving. NAV2 moved from TEB to MPPI for its more advanced trajectory planner.
+Timed Elastic Band (TEB) is a continuation, which shifts toward the Model Predictive Control (MPC) paradigm. MPC-based algorithms optimize a continuous trajectory, while enforcing kinodynamic constraints -- the geometrical and physical (acceleration, forces etc.) constraints. TEB optimizes the trajectory for time and distance to obstacles. More recently, sampling-based MPC algorithms like Model Predictive Path Integral Control (MPPI) have emerged for aggressive, high-speed driving. NAV2 once used TEB for its advanced trajectory planner, but recently moved to MPPI.
 
 While MPC methods generate superior trajectories compared to reactive methods like DWA, they require higher computational overhead. MPPI in particular requires parallel sampling that often necessitates a GPU, making it unsuitable for constrained systems. Therefore, a CPU-optimized MPC approach like TEB provides a middle ground between performance and efficiency.
+
+\section{Localization}
+
+You need to know the location of the robot to know where to drive. Currently one of the most used methods is Simultaneous Localization and Mapping (SLAM), particularly Visual-Inertial SLAM (VI-SLAM) and 3D LiDAR-based SLAM. However, these methods require lots of computational power. For example [Schmidt] demonstrated that VI-SLAM algorithms can use 4-6 GB of RAM for the mapping node and their accuracy degrades significantly if the frame rate is lowered to save processing power. Furthermore, outdoor environments—specifically parks with heavy vegetation—cause SLAM algorithms to drift or lose tracking entirely due to dynamic foliage and lack of distinct structural features.
+
+Because of these limitations, using Extended Kalman Filter (EKF) to fuse GPS, Inertial Measurement Units (IMU) and wheel odometry can be used as a stable alternative. [Moore] showed that while wheel odometry drifts immensely over time, fusing it with IMU provides an improvement. Adding GPS, even if jumpy and unpredictable under trees, further reduces the long-term drift, providing a reliable localization without the overhead of SLAM.
+
+\section{Semantic Mapping}
+
+SLAM is not only for localization, but also for mapping. To further avoid the costs of SLAM, researches explored using existing semantic maps for global planning. [Chen] note a growing trend of reducing SLAM dependency by navigating via pre-existing semantic data.
+
+OpenStreetMap (OSM) is fit for this use case. [Hentschel] showed that autonomous navigation can be performed using OSM geodata. There's also a benefit of OSM over SLAM, because it provides the semantic context of the environment, distinguishing pedestrian path and grass, describing the surface materials etc. Furthermore, [Stahr] utilize OSM attributes such as path width to create boundaries for local planners, which limits the search space for trajectory planning algorithms like TEB.
+
+\section{Obstacle Abstraction}
+
+Even with a lightweight mapping approach, processing raw sensor data for immediate obstacle avoidance remains resource-intensive. Compared to 2D LiDAR, 3D one has much more points (a vertical dimension). With 3D LiDAR there also emerges a problem of ground points, which need to be filtered out in order not to consider the roal itself as an obstacle. Due to these limitations 3D LiDAR becomes computationally expensive.
+
+Using 2D LiDAR solves the vertical complexity but still produces hundreds of data points per scan. To optimize this, researchers use algorithms to extract geometric primitives out of point clouds. [Catapang] and [Nguyen] walked through the scan and grouped all points at the distance lower than the vehicle diameter into clusters. Then to extract the clusters into geometric primitives [Sezer] used circle approximation. [Nguyen] compared several algorithms and found that the "Split and Merge" approach is highly efficient and accurate for converting raw LiDAR points into geometric lines. Sometimes the approaches are combined like in [Catapang], extracting a different primitive (circle, line or rectangle) depending on the cluster shape.
+
+Some approaches treat other agents differently from regular obstacles. However, implementations such as [Du] require Reinforcement Learning and 3D tracking, which conflicts with computational efficiency.
+
+\section{Conclusion}
+
+% TODO
+
