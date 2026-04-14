@@ -1,3 +1,15 @@
 % !TEX root = ../bachelor-thesis.tex
 
-\chapter{Theoretical Background }
+\chapter{Theoretical Background}
+
+\section{Differential Drive Robots}
+
+In this thesis the robot uses the four-wheeled skid-steer differential drive configuration. While the machine has four points of contact, the steering is achieved through a velocity differential between the left and right wheel pairs.
+
+This system can be treated the same way as a two-wheeled differential drive system. It means that robot's movement has non-holonomic constraints: it can rotate in place but cannot move laterally -- instead the robot's movement is controlled by linear ($v$) and angular ($\omega$) velocities. Planners must respect these constraints. A generated trajectory lacking feasible $(v, \omega)$ pairs cannot be executed by the hardware.
+
+Unlike two-wheeled systems, the four-wheeled configuration introduces lateral slip (skidding) during rotation, which increases drift in wheel-based odometry. Thus, IMU and GPS become more important to correct for the drift.
+
+\section{Spatial Representation}
+
+
