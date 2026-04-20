@@ -3,6 +3,37 @@
 \chapter{Proposed Solution}
 \section{Problem Formulation}
 
+The problem we are tackling is to reach the target position (defined by GPS coordinates or by relative offset in Cartesian coordinates) from a start position without human intervention. The environment is a park known in advance. This means the navigation takes place  outdoors on paved pedestrian paths. The core constraint of the problem is to use a minimal sensor suite (2D LiDAR, GPS, IMU, wheel odometry), with no computationally and energy demanding hardware (GPUs, 3D LiDAR, RGB-D camera). The idea is to minimize computational overhead while maintaining reliable obstacle avoidance and spatial accuracy.
+
+\section{System Architecture}
+
+The system consists of two nodes:
+\begin{itemize}
+    \item Controller Node uses data from sensors, extracts obstacles as geometric primitives, computes the global path and local trajectory.
+    \item Visualization Node takes the obstacles, path and trajectory from the Controller Node, displays them and offers a UI to enter the desired goal location or to cancel navigation. It sends these commands to the Controller Node.
+\end{itemize}
+
+The Controller Node is run on the UGV to reduce latency and responsiveness. The Visualization Node can be run on another machine on the local network, such as to allow operating the robot remotely.
+
+\section{Software Implementation}
+
+\subsection{Semantic Mapping and Global Routing}
+
+OSM is used for a semantic map. To interact with it the implementation used the \texttt{osmnx} library. It allows extract a multigraph for a polygon relation (such as a park) with roads (including footpaths) being edges and path intersections being vertices. To filter out the undrivable roads, we use the following tags of the edges:
+\begin{itemize}
+    \item \texttt{surface=}. Surfaces other than \texttt{paved, asphalt, concrete, paving\_stones, sett, cobblestone} are excluded.
+    \item \texttt{highway=}. For example, \texttt{motorway} and \texttt{cycleway} are excluded.
+    \item \texttt{access=} and \texttt{foot=}. If any of these is \texttt{no} or \texttt{private}, the road is discarded.
+\end{itemize}
+
+After initial filtering, the global path can be generated. The A* algorithm is used to get a sequence of vertices that need to be followed in order.
+
+The local planner does not operate on a graph, instead it works in a Cartesian coordinate system. Therefore, the vertices sequence has to be converted into a sequence of 2D points connected by straight lines. However, the roads are not straight lines, instead they are represented as lists of straight lines (defined under \texttt{geometry} field of the road). By splitting each road into a list of smaller straight lines, the final sequence of points becomes a sequence of waypoints for the local planner. Waypoints are 2D Cartesian points used as intermediate targets by TEB.
+
+\section{Hardware}
+For the task Ubuntu 22.04 and ROS2 Jazzy were used. % TODO: check if correct Ubuntu
+% TODO: finish
+
 % Moved from previously Introluction. TODO: change to fit here
 \section{Contributions}
 

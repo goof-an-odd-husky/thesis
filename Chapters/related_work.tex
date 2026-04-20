@@ -32,7 +32,7 @@ Because of these limitations, using Extended Kalman Filter (EKF) to fuse GPS, In
 
 SLAM is not only for localization, but also for mapping. To further avoid the costs of SLAM, researches explored using existing semantic maps for global planning. [Chen] note a growing trend of reducing SLAM dependency by navigating via pre-existing semantic data.
 
-OpenStreetMap (OSM) is fit for this use case. [Hentschel] showed that autonomous navigation can be performed using OSM geodata. There's also a benefit of OSM over SLAM, because it provides the semantic context of the environment, distinguishing pedestrian path and grass, describing the surface materials etc. Furthermore, [Stahr] utilize OSM attributes such as path width to create boundaries for local planners, which limits the search space for trajectory planning algorithms like TEB.
+OpenStreetMap (OSM) is fit for this use case. [Hentschel] showed that autonomous navigation can be performed using OSM geodata. There is also a benefit of OSM over SLAM, because it provides the semantic context of the environment, distinguishing pedestrian path and grass, describing the surface materials etc. Furthermore, [Stahr] utilize OSM attributes such as path width to create boundaries for local planners, which limits the search space for trajectory planning algorithms like TEB.
 
 \section{Obstacle Abstraction}
 
