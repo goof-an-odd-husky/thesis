@@ -3,14 +3,14 @@
 \chapter{Proposed Solution}
 \section{Problem Formulation}
 
-The problem we are tackling is to reach the target position (defined by GPS coordinates or by relative offset in Cartesian coordinates) from a start position without human intervention. The environment is a park known in advance. This means the navigation takes place  outdoors on paved pedestrian paths. The core constraint of the problem is to use a minimal sensor suite (2D LiDAR, GPS, IMU, wheel odometry), with no computationally and energy demanding hardware (GPUs, 3D LiDAR, RGB-D camera). The idea is to minimize computational overhead while maintaining reliable obstacle avoidance and spatial accuracy.
+The objective of this research is to enable an unmanned ground vehicle (UGV) to reach a target position (defined via GPS coordinates or a relative Cartesian offset) from an initial starting point entirely without human intervention. The environment is a park known in advance. This means the navigation takes place  outdoors on paved pedestrian paths. The core constraint of the problem is to use a minimal sensor suite (2D LiDAR, GPS, IMU, wheel odometry), with no computationally intensive or energy-demanding hardware (GPUs, 3D LiDAR, RGB-D camera). The idea is to minimize computational overhead while maintaining reliable obstacle avoidance and spatial accuracy.
 
 \section{System Architecture}
 
-The system consists of two nodes:
+The system consists of two ROS2 nodes:
 \begin{itemize}
-    \item Controller Node uses data from sensors, extracts obstacles as geometric primitives, computes the global path and local trajectory.
-    \item Visualization Node takes the obstacles, path and trajectory from the Controller Node, displays them and offers a UI to enter the desired goal location or to cancel navigation. It sends these commands to the Controller Node.
+    \item \textbf{Controller Node}: Executed directly on the Unmanned Ground Vehicle (UGV). It processes raw sensor data, extracts geometric primitives for obstacle abstraction, and computes both the global path and local trajectory. Running this node onboard minimizes network latency and ensures real-time responsiveness.
+    \item \textbf{Visualization Node}: Operates off-board on a separate machine within the same local network. It subscribes to the Controller Node to render obstacles, paths, and trajectories, displaying them in a UI. It also allows entering the desired goal location or canceling navigation.
 \end{itemize}
 
 The Controller Node is run on the UGV to reduce latency and responsiveness. The Visualization Node can be run on another machine on the local network, such as to allow operating the robot remotely.
@@ -19,7 +19,7 @@ The Controller Node is run on the UGV to reduce latency and responsiveness. The 
 
 \subsection{Semantic Mapping and Global Routing}
 
-OSM is used for a semantic map. To interact with it the implementation used the \texttt{osmnx} library. It allows extract a multigraph for a polygon relation (such as a park) with roads (including footpaths) being edges and path intersections being vertices. To filter out the undrivable roads, we use the following tags of the edges:
+OSM is used for a semantic map. To process this data, the Python \texttt{osmnx} library is utilized. It allows for the extraction of a multigraph for a specific OSM polygon relation (such as the park boundary), where traversable paths act as edges and intersections act as vertices. To filter out non-navigable terrain, the following edge tags are evaluated:
 \begin{itemize}
     \item \texttt{surface=}. Surfaces other than \texttt{paved, asphalt, concrete, paving\_stones, sett, cobblestone} are excluded.
     \item \texttt{highway=}. For example, \texttt{motorway} and \texttt{cycleway} are excluded.
@@ -28,7 +28,15 @@ OSM is used for a semantic map. To interact with it the implementation used the 
 
 After initial filtering, the global path can be generated. The A* algorithm is used to get a sequence of vertices that need to be followed in order.
 
-The local planner does not operate on a graph, instead it works in a Cartesian coordinate system. Therefore, the vertices sequence has to be converted into a sequence of 2D points connected by straight lines. However, the roads are not straight lines, instead they are represented as lists of straight lines (defined under \texttt{geometry} field of the road). By splitting each road into a list of smaller straight lines, the final sequence of points becomes a sequence of waypoints for the local planner. Waypoints are 2D Cartesian points used as intermediate targets by TEB.
+The local planner does not operate on a graph, instead it works in a Cartesian coordinate system. Therefore, the vertices sequence has to be converted into a sequence of 2D points connected by straight lines. Because physical footpaths are rarely perfectly straight, single edges in the graph are often represented in OSM as a sequence of smaller linear segments (stored within the \texttt{geometry} attribute). By splitting each edge into these underlying segments, the global planner outputs a sequence of 2D Cartesian waypoints suitable for the local planner.
+
+\subsection{Obstacle Abstraction}
+
+Raw point clouds are unsuitable for direct use in the local trajectory optimizer due to high dimensionality and sensor noise. Therefore, the Controller Node abstracts raw LiDAR data into geometric primitives.
+
+Before extraction, the point cloud is preprocessed, which includes removing points below a minimum range (in order to filter out the rays reflected from the vehicle itself) and applying a median filter to mitigate high-frequency noise. The scan is then grouped into clusters, following the [citation] approach. The Euclidean distance between consecutive points is evaluated -- gaps exceeding a predefined threshold separate the obstacles.
+
+% TODO
 
 \section{Hardware}
 For the task Ubuntu 22.04 and ROS2 Jazzy were used. % TODO: check if correct Ubuntu
@@ -37,16 +45,7 @@ For the task Ubuntu 22.04 and ROS2 Jazzy were used. % TODO: check if correct Ubu
 % Moved from previously Introluction. TODO: change to fit here
 \section{Contributions}
 
-Developed a ROS2 navigation pipeline for outdoor pedestrian paths.
-
-Parse OSM and use road attributes like surface to filter.
-
 Virtual corridor.
-
-UI; split architecture UI and controller.
 
 Implemented a filtering mechanism that translates raw point clouds from 2D LiDAR into geometric primitives (circles, lines) for a reduced computational cost of TEB.
 
-\section{Local Planner Waypoints}
-
-The result of the global search is a sequence of intersections the robot should follow. To get the path polyline (a sequence of waypoints $W=\{w_1, w_2, \dots, w_n\}$ connected by straight segments), each edge is expanded using OSM data. The waypoints are then used as a reference for the local planner. Additionally, a navigable corridor may be generated % TODO: finish

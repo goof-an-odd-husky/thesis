@@ -52,7 +52,7 @@ This fusion also ensures that even if a sensor like GPS becomes temporarily unav
 
 \subsection{Clustering}
 
-Point clouds are first grouped into discrete clusters using distance-based segmentation~\cite{nguyen2005lineextraction}. Points are assigned to a single object if the Euclidean distance between consecutive measurements $P_i$ and $P_{i+1}$ is below a threshold. Isolated points or clusters with insufficient density are rejected as noise.
+Point clouds are first grouped into discrete clusters using distance-based segmentation~\cite{nguyen2005lineextraction}. Points are assigned to a single object if the Euclidean distance between consecutive measurements $P_i$ and $P_{i+1}$ is below a threshold. Isolated points or clusters with insufficient density are rejected as noise. The vehicle diameter plus some padding can be used as an effective threshold, as lower gaps would not be passable by the robot.
 
 \subsection{Line Fitting}
 
@@ -60,6 +60,8 @@ Line extraction uses the Split-and-Merge algorithm~\cite{nguyen2005lineextractio
 
 \subsection{Circle Fitting}
 
-For clusters identified as obstacles more similar to circles (such as trees, poles, or people), geometric parameters (center and radius) are extracted using another algorithm~\cite{xavier2005circledetection}. It selects three points: the two extremes ($P_1$, $P_3$) and a central point ($P_2$) that best represents the arc's curvature. Perpendicular bisectors are constructed for the secant lines $P_1P_2$ and $P_2P_3$. The intersection of these bisectors defines the circle's center. This method provides an analytical solution for the center.
+For clusters identified as obstacles more similar to circles (such as trees, poles, or pedestrians), geometric parameters (center and radius) must be extracted. Algebraic methods, such as the circumcenter approach~\cite{xavier2005circledetection}, attempt to find an analytical solution by selecting three points (the extremes and a median) and computing the intersection of their perpendicular bisectors.
 
+While mathematically exact for perfect curves, algebraic fitting frequently fails when applied to 2D LiDAR data. Because LiDAR only senses the front face of an obstacle, the returned points form a shallow arc. For distant or small obstacles, the limited resolution of the scanner causes these arcs to approach a line~\cite{forsman2017bias}. Such cases result in large radius estimates and, combined with sensor noise, in unstable centroids.
 
+To ensure stability, researchers often rely on spatial extent rather than algebraic curvature. Arras et al.~\cite{arras2007people} demonstrated that bounding heuristics based on cluster width are more robust against sensor noise when detecting cylindrical shapes. The LiDAR uses radial spread of rays, so the detected edges of an object do not perfectly match the true ones, especially up close. Forsman et al.~\cite{forsman2017bias} showed that the chord width provides a reliable lower bound for diameter estimation, provided the sensor's line-of-sight geometry is accounted for -- that is, after the initial guess the circle should be enlarged to fit all the points in case the match was not perfect. As a side effect this provides a safety space around an obstacle, where the vehicle would not move.
