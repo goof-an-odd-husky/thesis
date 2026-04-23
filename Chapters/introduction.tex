@@ -4,33 +4,29 @@
 
 \section{Background and Motivation}
 
-Ground vehicles -- very important field; especially for tedious, far-away, or dangerous tasks.
+Mobile robotic systems are an important field, especially for tasks that are monotonous, remote, or located in hazardous environments. Manual control of such robots is often infeasible due to the sheer number of systems and the volume of their tasks. Furthermore, physical barriers such as distance or signal interference can cause remote control to fail. Therefore, autonomous systems are necessary to independently determine paths and navigate toward target locations.
 
-It is often infeasible to manually control such vehicles due to their sheer number and task volume. Physical barriers like distance or signal interference mean manual control can fail. Therefore, autonomous systems are a necessity for the robot to complete its task and navigate to desired locations independently.
+Outdoor navigation is typically more complex than indoor navigation. Systems must handle less predictable conditions, such as moving obstacles, uneven terrain, and pedestrians who do not necessarily cooperate with the robot.
 
-Outdoors, there are challenges of an unpredictable environment: unexpected/moving obstacles, surrounding agents (like other vehicles or pedestrians) do not cooperate, uneven terrain, etc.
+Today, ready-made solutions for autonomous navigation exist, such as the Nav2 stack in ROS~\cite{nav2_docs}. However, modern outdoor systems often rely on heavy sensors (like 3D LiDAR and RGB-D cameras) and complex algorithms (like Visual SLAM~\cite{schmidt2025vislam} and MPPI~\cite{williams2016mppi}). These methods demand high computational resources, large amounts of RAM, and sometimes GPUs. This increases costs, drains battery life, and is not always possible on simple, low-cost platforms.
 
-Today, there are ready-made solutions for autonomous navigation (like default Nav2 in ROS~\cite{nav2_docs}). However, modern outdoor systems often rely on heavy sensors (3D LiDAR, RGB-D cameras) and algorithms to process this data (Visual SLAM~\cite{schmidt2025vislam}, MPPI~\cite{williams2016mppi}). These require high computational resources, lots of RAM, and sometimes GPUs. This is expensive, it drains battery and not always possible on simple low-cost robots.
+Therefore, there is a motivation to explore what can be accomplished using a minimal, lightweight sensor suite. By avoiding heavy computations, it is possible to build a more accessible and energy-efficient system.
 
-Therefore, there is a motivation to see what can be accomplished using a minimal, lightweight sensor suite. By avoiding heavy computations, we can create a more accessible and energy-efficient system.
+Instead of generating a map from scratch using SLAM, existing semantic data like OpenStreetMap (OSM) can be used for global routing~\cite{hentschel2010osm}. Instead of processing 3D point clouds or images, a simple 2D LiDAR can handle immediate, dynamic obstacles like pedestrians or trees. Finally, instead of using visual odometry, the system can rely on standard GPS fused with an IMU and wheel odometry for localization~\cite{moore2015ekf}.
 
-Instead of calculating a map from scratch using SLAM, we can use existing, semantic data like OpenStreetMap (OSM) for global routing~\cite{hentschel2010osm}.
-Instead of 3D point clouds or image processing, we can use a simple 2D LiDAR to handle immediate, dynamic obstacles (like pedestrians or trees).
-Instead of visual odometry, we can rely on standard GPS fused with an IMU and wheel odometry~\cite{moore2015ekf}.
+Together, these lightweight components provide all the necessary data for a robot to navigate, albeit with lower spatial fidelity. This thesis aims to demonstrate that such a minimal setup is viable and effective in the real world.
 
-Together, these lightweight components theoretically provide all the necessary data for a robot to navigate (albeit in lower fidelity and density, higher sparcity). This thesis aims to prove that such a minimal setup is actually viable in the real world.
-
-The setup includes a ground differentially driven robot outdoors in a park. Pedestrian paths provide a semi-structured topologically known environment. Unlike road networks, pedestrian zones lack traffic rules, lane changes, or traffic lights, eliminating the need for heavy semantic computer vision processing. However, unlike completely unstructured off-road scenarios~\cite{min2026offroad}, these paths have clear geometric boundaries that can be modeled and tracked. The system's objective is to navigate autonomously from a start point to a target point without human intervention.
+The setup includes a differential-drive ground robot in an outdoor park. Pedestrian paths provide a semi-structured, topologically known environment. Unlike road networks, pedestrian zones lack strict traffic rules or lane changes, eliminating the need for heavy semantic computer vision processing. However, unlike completely unstructured off-road environments~\cite{min2026offroad}, these paths have clear geometric boundaries that can be modeled and tracked. The system's objective is to navigate autonomously from a start point to a target point without human intervention.
 
 \section{Objectives}
 
 \begin{itemize}
-\item Path planning -- find a global route (using graph search algorithms like A*) based on environment map (OpenStreetMap XML data).
-\item Obstacle detection -- process 2D LiDAR data to find obstacles.
-\item Local navigation -- combine spatial localization (GPS and IMU+Wheel Odometry -- sensor fusion via Extended Kalman Filter) and local path planning (using an optimization algorithm Timed Elastic Band) to avoid obstacles and follow the global path.
+\item Path planning: find a global route based on an OpenStreetMap environment graph using the A* search algorithm.
+\item Obstacle detection: process 2D LiDAR data to extract and classify geometric obstacles.
+\item Local navigation: combine spatial localization (using an Extended Kalman Filter to fuse GPS, IMU, and wheel odometry) with a local trajectory optimization algorithm (Timed Elastic Band) to follow the global path and avoid obstacles.
 \end{itemize}
 
-Conducted experiments in simulation. Evaluated the system's success rate, safety, and travel time. Provided a baseline comparison against the standard Nav2 implementation.
+Experiments were conducted in a simulated environment to validate the system. The performance was evaluated based on success rate, safety, and travel time. Additionally, a baseline comparison against the standard Nav2 implementation is provided to benchmark the system.
 
 \section{Structure Of The Thesis}
 
