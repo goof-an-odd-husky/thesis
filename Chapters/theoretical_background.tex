@@ -2,13 +2,33 @@
 
 \chapter{Theoretical Background}
 
+\section{Sensor Characteristics}
+
+Autonomous navigation systems rely on a number of sensors to perceive the environment and estimate the vehicle's state. Because a core objective of this research is resource efficiency, it is important to understand the capabilities and limitations of the minimal sensor suite:
+\begin{itemize}
+\item \textbf{Wheel Odometry:} Estimates the robot's relative displacement by measuring the rotation of its wheels. While useful for short-term tracking, it accumulates drift over time due to mechanical slip, which is especially prominent in skid-steer UGV configurations.
+\item \textbf{Inertial Measurement Unit (IMU):} Contains accelerometers and gyroscopes to measure linear acceleration and angular velocity. It provides frequent motion updates but suffers from integration drift and bias, meaning small noise errors grow quadratically over time.
+\item \textbf{Global Positioning System (GPS):} Provides absolute geographic positioning (latitude, longitude) by triangulating satellite signals. However, it is prone to high-frequency noise, low update rates, and signal degradation under trees or near tall structures.
+\item \textbf{2D LiDAR (Light Detection and Ranging):} Uses laser pulses to measure distances in a single horizontal plane, outputting a point cloud in polar coordinates. While computationally much lighter than 3D LiDAR, it lacks vertical resolution and cannot distinguishing between ground features (such as hills) and vertical obstacles.
+\end{itemize}
+
 \section{Differential Drive UGV}
 
-In this thesis the robot uses the four-wheeled skid-steer differential drive configuration. While the machine has four points of contact, the steering is achieved through a velocity differential between the left and right wheel pairs.
+In this thesis, the robot uses a four-wheeled skid-steer differential drive configuration. While the machine has four points of contact with the ground, steering is achieved through a velocity differential between the left and right wheel pairs.
 
-This system can be treated the same way as a two-wheeled differential drive system. It means that robot's movement has non-holonomic constraints: it can rotate in place but cannot move laterally -- instead the robot's movement is controlled by linear ($v$) and angular ($\omega$) velocities~\cite{minguez2008motion}. Planners must respect these constraints. A generated trajectory lacking feasible $(v, \omega)$ pairs cannot be executed by the hardware.
+To generate realistic and executable trajectories, autonomous planners must respect the physical limitations of the robot, which are broadly categorized into kinematic and dynamic constraints. Together, these form the robot's kinodynamic constraints.
 
-Unlike two-wheeled systems, the four-wheeled configuration introduces lateral slip (skidding) during rotation, which increases drift in wheel-based odometry~\cite{mandow2007kinematics}. Thus, IMU and GPS become more important to correct for the drift.
+\begin{itemize}
+    \item \textbf{Kinematic constraints}. A differential drive system acts under non-holonomic kinematic constraints: it can rotate in place and move forward or backward, but it cannot move laterally (it cannot slide sideways). Therefore, the robot's state transitions are controlled by its linear ($v$) and angular ($\omega$) velocities~\cite{minguez2008motion}. If a planner generates a path that requires lateral movement, the hardware physically cannot execute it.
+    \item \textbf{Dynamic constraints}. The UGV has physical mass and limited motor torque, so it cannot change velocities instantly. Therefore, dynamic cosntraints define robot's maximum achievable velocities ($v_{max}$, $\omega_{max}$) and maximum accelerations ($a_{max}$, $\epsilon_{max}$).
+\end{itemize}
+
+
+Unlike two-wheeled systems, the four-wheeled configuration introduces lateral slip (skidding) during rotation, which increases drift in wheel-based odometry~\cite{mandow2007kinematics}. Thus, accurate sensor fusion becomes more important to correct for the drift.
+
+\section{Hierarchical Navigation Architecture}
+
+Classical autonomous navigation typically employs a hierarchical, two-level architecture. Planning a kinematically feasible, collision-free trajectory from a starting point to a distant goal in a single step is computationally too expensive. Therefore, the problem is split into global and local planning. The global planner operates on a static map to find a purely topological route to the destination, ignoring the vehicle's kinematics and dynamic obstacles. The local planner then acts upon a small sliding window of this global route, functioning in real-time and generating motion commands that avoid immediate, unexpected obstacles.
 
 \section{Spatial Representation}
 
@@ -18,23 +38,67 @@ GPS sensors output data in geodetic coordinates (latitude, longitude, altitude).
 
 \subsection{Graph-Based Map Representation}
 
-For global planner to generate paths, it needs the map to be abstracted into a directed graph where vertices represent discrete spatial coordinates (intersections) and edges represent traversable paths (roads)~\cite{hentschel2010osm}. The nodes in this network exist only at intersections. Complex paths made of multiple segments are simplified into single edges connecting these intersections. The weight of each edge is the sum of all its original segment lengths. This preserves distance accuracy while reducing the number of nodes the planning algorithm must evaluate.
+For a global planner to generate paths, it requires the environment to be abstracted into a directed semantic graph~\cite{hentschel2010osm}. Unlike grid-based maps that treat the world as a matrix of occupied or free pixels, a semantic graph represents vertices as discrete spatial coordinates (such as path intersections), and edges as traversable paths (such as pedestrian roads). Complex paths made of multiple physical segments are simplified into single edges connecting these intersections. The weight of each edge is the sum of all its original segment lengths. This preserves distance accuracy while reducing the number of vertices the planning algorithm must evaluate.
 
-The A* algorithm~\cite{hart1968astar} navigates this graph. It calculates the shortest path by minimizing the function $f(n) = g(n) + h(n)$, where $g(n)$ is the exact cost from the start node to node $n$ and $h(n)$ is the estimated heuristic cost. For A* to guarantee the mathematically shortest path, the heuristic must be admissible, meaning it must never overestimate the actual cost to the goal~\cite{russell2020ai}. Because a straight line is always the shortest possible distance between two points, the Euclidean heuristic is admissible.
+% TODO: image for map -> graph
 
-With the heuristic cost in place, the algorithm first processes paths closer to the goal, thus the frontier of the search stretches in an elliptical shaped, pointing at the target. This naturally reduces the number of nodes processed, while preserving accuracy. % TODO: keep or redundant?
+The A* algorithm~\cite{hart1968astar} navigates this graph. It calculates the shortest path by minimizing the function $f(n) = g(n) + h(n)$, where $g(n)$ is the exact cost from the start vertex to vertex $n$ and $h(n)$ is the estimated heuristic cost. For A* to guarantee the mathematically shortest path, the heuristic must be admissible, meaning it must never overestimate the actual cost to the goal~\cite{russell2020ai}. Because a straight line is always the shortest possible distance between two points, the Euclidean heuristic is admissible.
+
+With the heuristic cost in place, the algorithm first processes paths closer to the goal, thus the frontier of the search stretches in an elliptical shaped, pointing at the target. This naturally reduces the number of vertices processed, while preserving accuracy. % TODO: keep or redundant?
 
 \section{Trajectory Optimization}
 
-The Timed Elastic Band (TEB) approach~\cite{rosmann2012teb} formulates local navigation as a multi-objective optimization problem.
+The Timed Elastic Band (TEB) approach~\cite{rosmann2012teb} formulates local navigation as a multi-objective optimization problem with a receding-horizon strategy. At each control step, the algorithm predicts a short-term trajectory over a finite time window, applies the first generated control command, and then continuously re-optimizes the trajectory as new sensor data arrives. The trajectory itself is defined as a sequence of intermediate poses between the start and goal. Each pose consists of $x, y$ coordinates (in meters), $\theta$ (heading angle, in radians) and $\Delta t$ (time interval, in seconds). The trajectory is initially generated as a sequence of points, with $\Delta t$ and $\theta$ linearly interpolated.
 
-The trajectory is a sequence of intermediate poses between them. Each pose consists of $x,y$ coordinates (in meters), $\theta$ (heading angle, in radians) and $\Delta t$ (time interval, in seconds). The trajectory is initialized as the global path, with $\Delta t$ and $\theta$ linearly interpolated.
+% TODO: image for what is trajectory
 
-The trajectory is then deformed based on constraints and obstacles. The problem is framed as a non-linear least squares problem to be optimized. The robot's poses act as the parameters. The physical and spatial constraints act as cost functions (or residuals). The residuals might include obstacle distance cost, kinematic cost, time cost. The optimization engine minimizes a weighted sum of these cost functions.
+The trajectory is then deformed based on constraints and obstacles. The problem is framed as a non-linear least squares problem to be optimized. The robot's poses act as the parameters. The physical and spatial constraints act as cost functions (also known as residuals). The optimization engine minimizes a weighted sum of these cost functions. In a least squares solver, the total cost is defined as $\frac{1}{2} \sum R_i^2$. Therefore, to apply a weight $w$ to a cost, the raw error is multiplied by $\sqrt{w}$, ensuring the squared residual provides the strictly weighted cost.
 
-Minimizing these costs requires calculating Jacobians -- matrices of partial derivatives indicating how changes in the trajectory parameters affect the total cost. These can be calculated analytically (either manually or automatically) or numerically (using finite differences at runtime).
+The standard formulations of these residuals~\cite{rosmann2012teb} ensure safety, kinematic feasibility, and efficiency:
 
-A solver like Ceres~\cite{agarwal2022ceres} (or g2o~\cite{kummerle2011g2o}, if framing the problem as a Hyper-Graph optimization~\cite{rosmann2013sparse}) uses Jacobians to find gradient of the cost functions. Because trajectory constraints usually affect adjacent poses, the resulting mathematical system is highly sparse. Ceres applies sparse factorization methods (such as Cholesky decomposition) to efficiently solve the equations, iteratively updating the parameters until it converges on a smooth, physically feasible trajectory.
+\subsection{Obstacle Cost}
+To prevent collisions, the solver penalizes poses that fall within the safety radius of geometric primitives. For a circular obstacle, the cost calculates the shortest distance from the obstacle center $O$ to the robot line segment $AB$. $P$ is the closest point on $AB$ and is represented using $P = A + t(B - A)$. The projection scalar $t$ is clamped to $[0, 1]$ to ensure the closest point lies strictly on the segment. Let $d = \|O - P\|$:
+\begin{equation}
+    R_{obs} = \begin{cases} 
+    \sqrt{w} \cdot (r_{obs} + r_{safe} - d) & \text{if } (r_{obs} + r_{safe}) > d \\ 
+    0 & \text{otherwise} 
+    \end{cases}
+\end{equation}
+
+\subsection{Kinematic Cost}
+To enforce the differential-drive constraint, the robot's motion between two configurations is modeled as an arc segment of constant curvature~\cite{rosmann2012teb}. This requires the angle $\vartheta_{i}$ between the robot's heading and the displacement vector $\mathbf{d}_{i,i+1}$ at the start configuration to be equal to the corresponding angle $\vartheta_{i+1}$ at the final configuration. Rather than optimizing these angles directly, the constraint is formulated as a cross product:
+\begin{equation}
+    \begin{pmatrix} \cos \theta_i \\ \sin \theta_i \\ 0 \end{pmatrix} \times \mathbf{d}_{i,i+1} = \mathbf{d}_{i,i+1} \times \begin{pmatrix} \cos \theta_{i+1} \\ \sin \theta_{i+1} \\ 0 \end{pmatrix}
+\end{equation}
+Simplified, the constraint reduces to a single scalar equation, yielding the resulting least-squares residual $R_{kin}$:
+\begin{equation}
+    R_{kin} = \sqrt{w} \cdot \Big[ (\cos\theta_i + \cos\theta_{i+1})\Delta y - (\sin\theta_i + \sin\theta_{i+1})\Delta x \Big]
+\end{equation}
+% TODO: image (ref the arc/heading angles)
+
+\subsection{Dynamics Costs}
+This cost imposes penalties if the physical limits of a UGV are exceeded. Using finite differences, the linear velocity cost is formulated as:
+\begin{equation}
+    R_{v} = \begin{cases} 
+    \sqrt{w} \cdot (|v| - v_{max}) & \text{if } |v| > v_{max} \\ 
+    0 & \text{otherwise} 
+    \end{cases}
+\end{equation}
+Analogous formulations are applied for linear acceleration, as well as angular acceleration and velocity, ensuring angle differences are normalized to $[-\pi, \pi]$. Two poses are required to calculate the finite differences for the velocity costs. Three poses are needed for acceleration costs, as they require two consecutive velocities to calculate the change in velocity.
+
+\subsection{Time Cost}
+To prevent the solver from minimizing other penalties by outputting infinite execution times, a penalty is applied directly to the $\Delta t$ parameters. This cost forces the system to progress toward the goal:
+\begin{equation}
+    R_{t} = \sqrt{w} \cdot \Delta t
+\end{equation}
+
+\subsection{Solvers and Jacobians}
+Traditionally, the TEB algorithm models the trajectory optimization as a hyper-graph, where robot poses represent the vertices and the kinematic or spatial constraints represent the edges. However, this hyper-graph formulation is mathematically equivalent to a standard non-linear least-squares optimization problem. In a least-squares framework, the poses act as the parameter blocks, and the constraints act as the residual blocks.
+
+To solve this objective function, optimization engines require Jacobians—matrices of partial derivatives indicating how changes in the trajectory parameters affect the total cost. These matrices are used to find the gradient of the cost functions and can be calculated analytically or numerically. Because trajectory constraints usually affect only adjacent poses, the resulting mathematical system is highly sparse. Solvers apply sparse factorization methods (such as Cholesky decomposition) to efficiently solve the equations, iteratively updating the parameters until they converge on a smooth, physically feasible trajectory.
+
+\subsection{Temporal Coherence}
+If an optimizer starts from a blank slate (a cold start) at every control step, it may fail to converge within strict time limits and may lead to inconsistent trajectories. Model Predictive Control (MPC) approaches, including TEB, solve this by utilizing a Warm Start~\cite{rosmann2013sparse}. Because the environment changes slightly between control frames, the optimized trajectory from the previous time step can be preserved and used as the initial guess for the next iteration. This temporal coherence reduces the number of iterations required for the solver to find a local minimum.
 
 \section{Sensor Fusion}
 
@@ -50,18 +114,20 @@ This fusion also ensures that even if a sensor like GPS becomes temporarily unav
 
 2D LiDAR outputs data in polar coordinates (distance and angle). To be used by the optimization engine, this point cloud must be segmented and abstracted into geometric primitives (lines and circles) in Cartesian space.
 
-\subsection{Clustering}
+\subsection{Pre-processing and Clustering}
 
-Point clouds are first grouped into discrete clusters using distance-based segmentation~\cite{nguyen2005lineextraction}. Points are assigned to a single object if the Euclidean distance between consecutive measurements $P_i$ and $P_{i+1}$ is below a threshold. Isolated points or clusters with insufficient density are rejected as noise. The vehicle diameter plus some padding can be used as an effective threshold, as lower gaps would not be passable by the robot.
+Raw LiDAR scans frequently contain isolated noise spikes and artifacts. Therefore, the points are first passed through a median filter to reject extreme outliers. The filtered point clouds are then grouped into discrete clusters using distance-based segmentation~\cite{nguyen2005lineextraction}. Points are assigned to a single sequential object if the Euclidean distance between consecutive measurements $P_i$ and $P_{i+1}$ is below a defined break distance. The vehicle diameter plus some padding can be used as an effective threshold, as narrower gaps would not be passable by the robot. % TODO: Image
+
+\subsection{Shape Classification}
+
+Clusters must be categorized as linear or circular to apply the correct geometric extraction logic. For clusters with three or more points, a geometric pre-filter~\cite{xavier2005circledetection} is used to evaluate the curvature. A chord vector is drawn between the cluster's endpoints, $P_1$ and $P_3$, and the cross product is used to calculate the perpendicular arc depth to the median point, $P_2$. If this depth is bounded between $10\%$ and $70\%$ of the chord length, the cluster exhibits sufficient convexity to be classified as a circle. Clusters falling outside this range, or clusters exhibiting an excessive maximum internal point-to-point distance, are classified as lines. % TODO: image
 
 \subsection{Line Fitting}
 
-Line extraction uses the Split-and-Merge algorithm~\cite{nguyen2005lineextraction}. First, a chord is drawn between the cluster's endpoints. The algorithm calculates the perpendicular distance from every point to this chord. If the maximum distance exceeds an error threshold, the cluster is split at that point into two sub-scans, and the process recurses. The result is a set of linear segments that approximate complex shapes like walls or curbs.
+Line extraction uses the Split-and-Merge algorithm~\cite{nguyen2005lineextraction}. First, a chord is drawn between the cluster's endpoints. The algorithm calculates the perpendicular distance from every internal point to the chord. If the maximum distance exceeds a predefined threshold, the cluster is split at that peak point into two sub-scans, and the process recurses. The result is a set of distinct linear segments that approximate complex shapes like walls or curbs. % TODO: Image
 
 \subsection{Circle Fitting}
 
-For clusters identified as obstacles more similar to circles (such as trees, poles, or pedestrians), geometric parameters (center and radius) must be extracted. Algebraic methods, such as the circumcenter approach~\cite{xavier2005circledetection}, attempt to find an analytical solution by selecting three points (the extremes and a median) and computing the intersection of their perpendicular bisectors.
+For clusters identified as circular obstacles (such as trees or pedestrians), geometric parameters (center and radius) must be extracted. Algebraic methods, such as the circumcenter approach~\cite{xavier2005circledetection}, attempt to find an analytical solution by selecting three points and computing the intersection of their perpendicular bisectors. % TODO: Image
 
-While mathematically exact for perfect curves, algebraic fitting frequently fails when applied to 2D LiDAR data. Because LiDAR only senses the front face of an obstacle, the returned points form a shallow arc. For distant or small obstacles, the limited resolution of the scanner causes these arcs to approach a line~\cite{forsman2017bias}. Such cases result in large radius estimates and, combined with sensor noise, in unstable centroids.
-
-To ensure stability, researchers often rely on spatial extent rather than algebraic curvature. Arras et al.~\cite{arras2007people} demonstrated that bounding heuristics based on cluster width are more robust against sensor noise when detecting cylindrical shapes. The LiDAR uses radial spread of rays, so the detected edges of an object do not perfectly match the true ones, especially up close. Forsman et al.~\cite{forsman2017bias} showed that the chord width provides a reliable lower bound for diameter estimation, provided the sensor's line-of-sight geometry is accounted for -- that is, after the initial guess the circle should be enlarged to fit all the points in case the match was not perfect. As a side effect this provides a safety space around an obstacle, where the vehicle would not move.
+While mathematically exact for perfect curves, algebraic fitting frequently fails when applied to 2D LiDAR data. Because LiDAR only senses the front face of an obstacle, the returned points form a shallow arc. For distant or small obstacles, the limited resolution of the scanner causes these arcs to approach a straight line. Furthermore, because the laser beam has a physical width, reflections from the highly angled flanks of cylindrical objects register prematurely. This smearing effect flattens the perceived curve, causing traditional algebraic methods to systematically overestimate the cylinder's diameter by up to $19\%$~\cite{forsman2017bias}.
