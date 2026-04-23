@@ -141,3 +141,41 @@ To ensure the autonomous system operates safely and reliably, the algorithmic pa
     \item \textit{Trajectory Resolution.} The trajectory resolution limits are bounded between $0.5\text{ m}$ and $2.0\text{ m}$. This means that each segment of the trajectory is at least $0.5 \text{ m}$ and at most $2.0\text{ m}$ long. This ensures the matrix size remains small enough for real-time calculation while maintaining enough pose density to accurately describe curves.
     \item \textit{Maximum Solver Iterations.} The Ceres optimizer is capped at $5$ iterations per control frame. While the original TEB implementation~\cite{rosmann2013sparse} utilized four outer loops of five iterations each, computing all 20 iterations within a single cycle introduces significant latency, especially when using Python. Delaying the control response to calculate a mathematically perfect trajectory poses a safety risk in dynamic environments. Instead, the system executes only a single loop of 5 iterations and outputs this intermediate solution immediately to maintain a high control rate. Because the algorithm employs a warm start strategy, the subsequent control frame continues refining the trajectory exactly where the previous one left off. This approach effectively distributes the optimization workload across control frames, ensuring real-time responsiveness without sacrificing long-term path convergence.
 \end{itemize}
+
+\subsection{Safety Mechanisms}
+
+Because the system relies on a minimal sensor suite, it inherently possesses perceptual blind spots -- most notably the lack of vertical vision due to the 2D LiDAR. To ensure safe operation of a heavy UGV in a public environment, a hierarchy of safety nets was implemented. If any of the following conditions are met, the system overrides the local planner and triggers an immediate software-level emergency stop (E-Stop), halting all movement.
+
+\subsubsection{Terrain Anomalies}
+
+A 2D LiDAR scans a single horizontal plane and cannot detect low obstacles (like rocks), drop-offs, or curbs. To compensate, the internal IMU monitors the vehicle's orientation. If the pitch or roll exceeds a threshold, it indicates the UGV is driving over an unseen obstacle or falling into a ditch, triggering an immediate stop.
+
+\subsubsection{Proximity Breach}
+
+If the geometric abstraction pipeline detects any obstacle within a critical stop distance, the system assumes an imminent or ongoing collision and stops.
+
+\subsubsection{Stale Sensors}
+
+The controller monitors the timestamps of incoming LiDAR and odometry streams. If the sensors lag or timeout, the system stops to prevent the robot from executing outdated trajectories while driving blind.
+
+\subsubsection{Trajectory Collision Prediction}
+
+The TEB optimizer may occasionally fail to converge on a safe path within the time limit. Before sending commands to the motors, the controller evaluates the first $K$ segments (``trajectory collision lookahead'') of the generated trajectory. If any of these segments intersect with an obstacle, the trajectory is deemed unsafe.
+
+\subsubsection{Path Deviation}
+
+If the UGV is forced to dodge multiple obstacles and its position deviates more than $X\text{ m}$ (virtual corridor + padding, meaning that other safety features such as curb detection did not activate), from the global A* route, it is considered lost.
+
+\subsubsection{Localization Jumps}
+
+While GPS may produce high-frequency errors, IMU and wheel odometry do not. If a jump in the latter is noticed (significantly larger than the vehicles maximum velocity), the system halts to wait for the localization to stabilize.
+
+\subsubsection{Motion Stall}
+
+If the controller is actively publishing velocity commands, but the sensors report little to no actual speed for a continuous period of time, the system deduces that the UGV is mechanically stuck and stops attempting to drive forward.
+
+\subsubsection{Network and Operator Override}
+
+The UGV operates autonomously but must remain under the ultimate supervision of a human operator using the off-board Visualization node. The UI publishes a continuous heartbeat signal over the local network. If the controller does not receive this signal for $5\text{ seconds}$, it assumes the network connection has dropped. The robot automatically halts to ensure the operator never loses the ability to trigger a remote software cancellation.
+
+
