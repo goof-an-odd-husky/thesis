@@ -3,15 +3,28 @@
 \chapter{Proposed Solution}
 \section{Problem Formulation}
 
-The objective of this research is to enable an unmanned ground vehicle (UGV) to reach a target position (defined via GPS coordinates or a relative Cartesian offset) from an initial starting point entirely without human intervention. The solution presents an OSM-based hierarchical autonomous navigation system operating in a semi-structured outdoor pedestrian environment. A semi-structured environment, such as a park, provides fixed paved paths but introduces dynamic, unpredictable obstacles like pedestrians.
+The objective of this research is to enable an UGV to reach a target position (defined via GPS coordinates or a relative Cartesian offset) from an initial starting point entirely without human intervention. The solution presents an OSM-based hierarchical autonomous navigation system operating in a semi-structured outdoor pedestrian environment. A semi-structured environment, such as a park, provides fixed paved paths but introduces dynamic, unpredictable obstacles like pedestrians.
 
 The core constraint of the problem is to design a resource-efficient setup using a minimal sensor suite (2D LiDAR, GPS, IMU, wheel odometry) without relying on computationally intensive and energy-demanding hardware like GPUs, 3D LiDARs, or RGB-D cameras. By combining semantic-graph-based global routing with receding-horizon local trajectory optimization, the system minimizes computational demands while maintaining reliable obstacle avoidance and spatial accuracy.
+
+\section{Hardware Setup}
+
+The experimental subject of this research is the Clearpath Husky A200 (cite clearpath website or something), a medium-sized UGV. The Husky is a rugged, four-wheeled skid-steer platform designed for research applications. It has a physical footprint of $99 \times 67 \times 39 \text{ cm}$, weighing approximately $50 \text{ kg}$.
+
+The UGV is equipped with a minimal sensor suite, which includes:
+\begin{itemize}
+    \item Built-in Wheel Encoders, with the frequency of $78 000\text{ ticks/m}$
+    \item IMU: % TODO: specify the model
+    \item 2D LiDAR: % TODO: specify the model
+    \item GPS Receiver: % TODO: specify the model
+    \item Compute Unit: ROS2 Jazzy % TODO: specify the models
+\end{itemize}
 
 \section{System Architecture}
 
 The system consists of two ROS2 nodes:
 \begin{itemize}
-	\item \textbf{Controller Node}: Executed directly on the Unmanned Ground Vehicle (UGV). It processes raw sensor data, extracts geometric primitives for obstacle abstraction, and computes both the global path and local trajectory. Running this node onboard minimizes network latency and ensures real-time responsiveness.
+	\item \textbf{Controller Node}: Executed directly on the UGV. It processes raw sensor data, extracts geometric primitives for obstacle abstraction, and computes both the global path and local trajectory. Running this node onboard minimizes network latency and ensures real-time responsiveness.
 	\item \textbf{Visualization Node}: Operates off-board on a separate machine within the same local network. It subscribes to the Controller Node to render obstacles, paths, and trajectories, displaying them in a UI. It also allows entering the desired goal location or canceling navigation.
 \end{itemize}
 
@@ -65,7 +78,7 @@ In fallback scenarios where GPS is disabled or unavailable, the direction to the
 A custom Python implementation of the Timed Elastic Band (TEB) algorithm was developed, utilizing the \texttt{pyceres} library for non-linear optimization. % TODO: what is this lib's relation to Ceres
 
 \subsubsection{Local Goal Selection and State Representation}
-Because optimizing a trajectory all the way to the final destination is infeasible to compute in real time, the TEB planner operates on a sliding window. At each control loop, the UGV's current position is projected onto the global path (the closest waypoint to the current position is selected). The algorithm traverses the path forward until an accumulated length is equal to the predefined lookahead distance. This coordinate becomes the temporary local goal for the optimizer.
+Because optimizing a trajectory all the way to the final destination is infeasible to compute in real time, the TEB planner operates on a sliding window. At each control loop, the UGV's current position is projected onto the global path (the closest waypoint to the current position is selected). The algorithm traverses the path forward until an accumulated length is equal to the predefined lookahead distance. This coordinate becomes the temporary local goal for the optimizer. If the local goal falls inside or too close to an obstacle, it is slided along the global path until a free space is found.
 
 To ensure the solver remains stable, the trajectory resolution is dynamically resized between iterations. The distances between consecutive poses are calculated. If a distance is lower than a lower bound, the pose is pruned, and the $\Delta t$ of the previous one is increased by the $\Delta t$ of the current one. If the distance is larger than the upper bound, a new pose gets inserted in the middle of the other two, and the $\Delta t$ is halved and spread across the inserted pose and the first of the two old ones.
 
@@ -97,16 +110,34 @@ While \texttt{g2o} uses predefined graph edges, Ceres allows for the manual defi
 
 To ensure the optimization can run in real-time, an obstacle filter is applied before constructing the Ceres problem. Rather than evaluating every obstacle against every pose, the system pre-calculates distances and only adds residual blocks to the solver for obstacles posing an immediate collision threat to specific segments. All obstacle parameters are pre-extracted into arrays upon initialization, allowing for vectorized operations instead of slow iterative loops.
 
-The problem is solved using the Dense Normal Cholesky linear solver via \texttt{pyceres}. Due to Python limitations (% TODO: cite GIL
-), performance drops when increasing the number of threads, so the optimization is strictly restricted to a single thread. To maintain a predictable control rate, the solver is capped at a strict maximum number of iterations. % TODO: explain, why Dense Cholesky
+The problem is solved using the Sparse Normal Cholesky linear solver via \texttt{pyceres}. Due to Python limitations (% TODO: cite GIL
+), performance drops when increasing the number of threads, so the optimization is strictly restricted to a single thread. To maintain a predictable control rate, the solver is capped at a strict maximum number of iterations. % TODO: explain, why Sparse Cholesky - because the same as in 2013 TEB paper (though they used g2o there, but the underlying algorithm was still the same)
 
 \subsubsection{Latency Compensation}
 The implementation uses a warm start approach to maintain temporal coherence. However, because non-linear optimization introduces computational latency, the UGV physically moves while the solver runs. If the trajectory state was preserved blindly, the initial poses would be outdated by the time the next frame begins.
 
 To resolve this, a latency compensation mechanism is implemented. Before the next optimization step begins, the system queries the most recent odometry estimate (filtered through EKF). The displacement ($\Delta x, \Delta y, \Delta \theta$) that accumulated during the optimization is used to transform the trajectory matrix. This ensures the warm-started trajectory matches the robot's current pose before being passed to the solver. After these adjustments, the first pose in the trajectory is translated into linear ($v$) and angular ($\omega$) velocities and published to the UGV's motor controllers.
 
-% TODO: write the remaining sections of proposed solution
+\subsection{Parameter Selection}
 
-\section{Hardware}
-For the task Ubuntu 22.04 and ROS2 Jazzy were used. % TODO: check if correct Ubuntu
-% TODO: finish
+To ensure the autonomous system operates safely and reliably, the algorithmic parameters were tuned to match both the physical properties of the UGV and the computational constraints of the onboard hardware.
+
+\subsubsection{Spatial and Obstacle Constraints}
+\begin{itemize}
+    \item \textit{Safety and Critical Radii.} The system uses a dual-boundary approach. The ``safety radius'' is set to $1.3\text{ m}$, establishing a soft buffer slightly larger than the UGV's length. The optimizer penalizes trajectories entering this zone. Additionally, a ``critical stop radius'' is defined at $0.5\text{ m}$. If any obstacle breaches this distance, an immediate emergency stop is triggered.
+    \item \textit{Cluster Break Distance.} Set to $1.4\text{ m}$, which is roughly 1.5 times the physical width of the robot. If the gap between two sequential LiDAR points is smaller than this threshold, the UGV would physically struggle to navigate through it. Therefore, the clustering algorithm treats the gap as unpassable and merges the points into a single solid obstacle.
+    \item \textit{LiDAR Filtering.} A ``min scan range'' of $0.33\text{ m}$ is enforced to filter out laser rays reflecting off the Husky's own chassis. Additionally, a 1D median filter of size $3$ is applied to the raw scans. This eliminates isolated single-ray noise (e.g., sensor artifacts or flying debris) without overly smoothing out genuine narrow obstacles.
+    \item \textit{Virtual Barriers.} To prevent the local planner from navigating off the pavement into unstructured terrain, a ``barrier offset'' of $2.0\text{ m}$ is applied. Empirically, pedestrian paths in the targeted park environment have the minimum width of roughly 4 meters. Applying a 2-meter virtual line obstacle to both the left and right of the global path's center confines the trajectory to the pavement.
+\end{itemize}
+
+\subsubsection{Kinodynamic Limits}
+\begin{itemize}
+    \item \textit{Velocity and Acceleration.} The maximum linear velocity ($v_{max}$) is restricted to $0.5\text{ m/s}$, and angular velocity ($\omega_{max}$) to $0.75\text{ rad/s}$. While the Husky is capable of higher speeds, limiting velocity prevents severe skid-steering drift and increases safety in a crowded environment. Linear acceleration ($a_{max}$) is limited to $0.1\text{ m/s}^2$. This low acceleration ensures smooth motion and provides a more predictable behavior for pedestrians.
+\end{itemize}
+
+\subsubsection{Computational Constraints}
+\begin{itemize}
+    \item \textit{Trajectory Lookahead.} The ``max trajectory distance'' is set to $7\text{ m}$. This provides enough foresight for the TEB algorithm to navigate around large obstacles without overloading the solver with distant, irrelevant waypoints.
+    \item \textit{Trajectory Resolution.} The trajectory resolution limits are bounded between $0.5\text{ m}$ and $2.0\text{ m}$. This means that each segment of the trajectory is at least $0.5 \text{ m}$ and at most $2.0\text{ m}$ long. This ensures the matrix size remains small enough for real-time calculation while maintaining enough pose density to accurately describe curves.
+    \item \textit{Maximum Solver Iterations.} The Ceres optimizer is capped at $5$ iterations per control frame. While the original TEB implementation~\cite{rosmann2013sparse} utilized four outer loops of five iterations each, computing all 20 iterations within a single cycle introduces significant latency, especially when using Python. Delaying the control response to calculate a mathematically perfect trajectory poses a safety risk in dynamic environments. Instead, the system executes only a single loop of 5 iterations and outputs this intermediate solution immediately to maintain a high control rate. Because the algorithm employs a warm start strategy, the subsequent control frame continues refining the trajectory exactly where the previous one left off. This approach effectively distributes the optimization workload across control frames, ensuring real-time responsiveness without sacrificing long-term path convergence.
+\end{itemize}
