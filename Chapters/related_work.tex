@@ -12,7 +12,7 @@ The problem of autonomous navigation classically divided into:
 
 Research has been conducted on both fields, with various algorithms developed to handle different environmental constraints and vehicle kinematics~\cite{pandey2017review}.
 
-Global -- graph-based approaches like Dijkstra's or A*, because reliable and optimal on static maps~\cite{hart1968astar}.
+Global -- graph-based approaches like Dijkstra's or A*, because reliable and optimal on static maps~\cite{karur2021survey}.
 
 But when moving in dynamic environments, real-time local planning is required. Early approaches, such as the Artificial Potential Fields (APF) method~\cite{khatib1986potential}, modeled the environment as a physical field: the goal attracts, the obstacles repel. But it suffered from local minimums and worked worse with tight gaps. Later, the Vector Field Histogram (VFH) was introduced~\cite{borenstein1989vfh}: simpler and with better performance, though it struggled with complex paths and kinematic constraints of vehicles. Other approaches focused specifically on dynamic environments using a collision cone approach to predict intersections between moving objects~\cite{chakravarthy2002collision}.
 

@@ -9,29 +9,29 @@ The core constraint of the problem is to design a resource-efficient setup using
 
 \section{Hardware and Environment Setup}
 
-The experimental subject of this research is the Clearpath Husky A200 (cite clearpath website or something), a medium-sized UGV. The Husky is a rugged, four-wheeled skid-steer platform designed for research applications. It has a physical footprint of $99 \times 67 \times 39 \text{ cm}$, weighing approximately $50 \text{ kg}$.
+The experimental subject of this research is the Clearpath Husky A200~\cite{clearpath_husky}, a medium-sized UGV. The Husky is a rugged, four-wheeled skid-steer platform designed for research applications. It has a physical footprint of $99 \times 67 \times 39 \text{ cm}$, weighing approximately $50 \text{ kg}$.
 
 The UGV is equipped with a minimal sensor suite, which includes:
 \begin{itemize}
-    \item Built-in Wheel Encoders, with the frequency of $78 000\text{ ticks/m}$.
+    \item Built-in Wheel Encoders, with the resolution of $78 000\text{ ticks/m}$.
     \item IMU: % TODO: specify the model
     \item 2D LiDAR: % TODO: specify the model
     \item GPS Receiver: % TODO: specify the model
     \item Compute Unit: ROS2 Jazzy~\cite{macenski2022ros2} % TODO: specify the models
 \end{itemize}
 
-The proposed system was designed for Stryiskyi Park, Lviv, Ukraine. The environment is semi-structured, featuring mapped, paved pedestrian paths but lacking traffic rules or lane markings. While the park's topography includes both flat and hilly regions, this work is built for predominantly flat sections, as navigation on hilly terrains using only 2D sensors poses additional challenges in ground removal and obstacle filtering~\cite{kim2020hilly}. There are some challenges in this environment:
+The proposed system was designed for Stryiskyi Park, Lviv, Ukraine. The environment is semi-structured, featuring mapped, paved pedestrian paths but lacking traffic rules or lane markings. While the park's topography includes both flat and hilly regions, this work is built for predominantly flat sections, as navigation on hilly terrains using only 2D sensors poses additional challenges in ground removal and obstacle filtering~\cite{kim2020hilly}. This environment poses several challenges:
 \begin{itemize}
     \item The park features dense tree coverage, which might degrade GPS signals, testing the resilience of the EKF sensor fusion.
-    \item There are dynamic, non-cooperative entities -- primarily pedestrians, bicycles, and pets -- whose unpredictable trajectories test the responsiveness real-time collision avoidance capabilities of the system.
+    \item There are dynamic, non-cooperative entities -- primarily pedestrians, bicycles, and pets -- whose unpredictable trajectories test the responsiveness and real-time collision avoidance capabilities of the system.
 \end{itemize}
 
 \section{System Architecture}
 
 The system consists of two ROS2 nodes:
 \begin{itemize}
-	\item \textbf{Controller Node}: Executed directly on the UGV. It processes raw sensor data, extracts geometric primitives for obstacle abstraction, and computes both the global path and local trajectory. Running this node onboard minimizes network latency and ensures real-time responsiveness.
-	\item \textbf{Visualization Node}: Operates off-board on a separate machine within the same local network. It subscribes to the Controller Node to render obstacles, paths, and trajectories, displaying them in a UI. It also allows entering the desired goal location or canceling navigation.
+	\item Controller Node: Executed directly on the UGV. It processes raw sensor data, extracts geometric primitives for obstacle abstraction, and computes both the global path and local trajectory. Running this node onboard minimizes network latency and ensures real-time responsiveness.
+	\item Visualization Node: Operates off-board on a separate machine within the same local network. It subscribes to the Controller Node to render obstacles, paths, and trajectories, displaying them in a UI. It also allows entering the desired goal location or canceling navigation.
 \end{itemize}
 
 \section{Software Implementation}
@@ -90,6 +90,7 @@ To ensure the solver remains stable, the trajectory resolution is dynamically re
 While standard kinematic, dynamic, time, and circular obstacle costs (as defined in Section 2.5) were utilized in the system, specific custom formulations had to be derived for linear obstacles and start conditions to maintain solver stability in Pyceres.
 
 \paragraph{Line Obstacle Cost}
+
 Calculating the exact shortest distance between two line segments introduces non-differentiable edge cases. To solve this and maintain smooth Jacobians for the Ceres solver, a custom residual was derived. The minimum distance from the trajectory segment (endpoints $A, B$) to the obstacle segment (endpoints $C, D$) is approximated using a LogSumExp (Softmin) function~\cite{boyd_vandenberghe_2004} over the four endpoint-to-segment distances ($d_A \dots d_D$):
 \begin{equation}
 	d_{min} = -\frac{1}{\alpha} \ln \left( \sum_{k=1}^4 \exp(-\alpha \cdot d_k) \right)
@@ -103,12 +104,13 @@ Calculating the exact shortest distance between two line segments introduces non
 % TODO: mb image
 
 \paragraph{Starting Dynamics Cost}
+
 For the first segment of the trajectory (from the current position to the first planned pose), there is no ``previous'' pose to reference -- and as such, there cannot be three poses to calculate acceleration. If unconstrained, the solver might generate a trajectory that begins at a high velocity while the physical robot is stationary, implicitly demanding an infinite, impossible instantaneous acceleration.
 
 To prevent this, a custom dynamic cost is implemented specifically for the starting position. It uses the robot's current velocity ($\vec{v}_{curr}, \omega_{curr}$), retrieved directly from the state estimation sensors, to calculate the acceleration and angular acceleration costs for the first trajectory segment.
 
 \subsubsection{Jacobians and Ceres Problem Setup}
-The standard ROS implementation of TEB relies on C++ and the \texttt{g2o} library However, because the TEB objective function is fundamentally a sum of squared weighted residuals, it can be easily adapted into a general-purpose non-linear least-squares framework. For this custom Python architecture, Google's Ceres Solver~\cite{agarwal2012ceres} was chosen via the \texttt{pyceres} library.
+The standard ROS implementation of TEB relies on C++ and the \texttt{g2o} library~\cite{kummerle2011g2o}. However, because the TEB objective function is fundamentally a sum of squared weighted residuals, it can be easily adapted into a general-purpose non-linear least-squares framework. For this custom Python architecture, Google's Ceres Solver~\cite{agarwal2012ceres} was chosen via the \texttt{pyceres} library.
 
 While \texttt{g2o} uses predefined graph edges, Ceres allows for the manual definition of residual blocks. Because \texttt{pyceres} lacks the C++ compile-time automatic differentiation feature of the native Ceres library, the partial derivatives for all implemented residuals were calculated analytically and provided directly to the solver.
 
@@ -146,6 +148,7 @@ To ensure the autonomous system operates safely and reliably, the algorithmic pa
 \end{itemize}
 
 \subsection{Safety Mechanisms}
+\label{subsec:safety-mechanisms}
 
 Because the system relies on a minimal sensor suite, it inherently possesses perceptual blind spots -- most notably the lack of vertical vision due to the 2D LiDAR. To ensure safe operation of a heavy UGV in a public environment, a hierarchy of safety nets was implemented. If any of the following conditions are met, the system overrides the local planner and triggers an immediate software-level emergency stop (E-Stop), halting all movement.
 
@@ -180,3 +183,63 @@ If the controller is actively publishing velocity commands, but the sensors repo
 \subsubsection{Network and Operator Override}
 
 The UGV operates autonomously but must remain under the ultimate supervision of a human operator using the off-board Visualization node. The UI publishes a continuous heartbeat signal over the local network. If the controller does not receive this signal for $5\text{ seconds}$, it assumes the network connection has dropped. The robot automatically halts to ensure the operator never loses the ability to trigger a remote software cancellation.
+
+\section{Ethical and Safety Considerations}
+
+Deploying a $50\text{ kg}$ autonomous vehicle in a public space involves inherent safety risks. The primary ethical consideration is to ensure that the UGV does not pose a physical threat to pedestrians, pets, or property. As discussed, the system is limited in its perception due to its minimal sensor suite. To mitigate the risk, the system design prioritizes safety over navigational efficiency. This is reflected in the strict velocity caps, the critical stop radius, and the extensive software-level safety mechanisms described in~\ref{subsec:safety-mechanisms}. Quantitative benchmarking involving human-like dynamic agents is only conducted in simulation to eliminate physical risk.
+
+\section{Experimental Methodology}
+
+To evaluate the performance and resource efficiency of the proposed lightweight navigation architecture, a series of controlled quantitative experiments were conducted. While the system is designed for and qualitatively tested on physical hardware, the primary comparative benchmarking was executed within a simulation environment. Simulation allows for exact reproducibility, precise dynamic obstacle scripting, and isolated performance profiling without the physical constraints of battery degradation or unmeasured environmental hazards.
+
+\subsection{Simulation Environment Setup}
+
+The experiments were conducted using Gazebo Sim (version 8.9.0)~\cite{koenig2004gazebo}. To accurately reflect the semantic and spatial challenges of the target environment, a simulated representation of Stryiskyi Park was utilized. The environment's global topology was driven by OSM data, while the physical terrain was modeled using a 2D satellite projection overlaid on a topographic heightmap. % Mention software that I used to get a world from satellite images
+
+Because the core objective of the system is local obstacle avoidance, artificial geometric obstacles were injected into the simulated park environment along the known OSM paths. These obstacles were sized to approximate real-world hazards:
+\begin{itemize}
+    \item Static Obstacles: Represented by $0.5\text{ m}$-diameter stationary cylinders, simulating obstacles such as standing pedestrians or unmapped static objects.
+    \item Dynamic Obstacles: Represented by cylinders moving via predefined kinematic trajectories at speeds between $0.5\text{ m/s}$ and $1.2\text{ m/s}$, simulating walking pedestrians.
+\end{itemize}
+
+To ensure the simulation accurately reflected the physical constraints of the Clearpath Husky A200, realistic sensor noise was modeled. The simulated 2D LiDAR was constrained to the hardware's actual maximum range, and the simulated wheel odometry and IMU data were processed through the same EKF node as the physical robot.
+
+\subsection{Test Scenarios}
+
+The system was evaluated across several navigational scenarios, each designed to stress different aspects of the planner:
+\begin{itemize}
+    \item Static Obstacle Course: The UGV navigated a 30-meter path populated with stationary obstacles arranged in offset patterns, requiring the TEB planner to execute smooth kinodynamic avoidance maneuvers.
+    \item Dynamic Intersection: The UGV traversed a crossing where simulated dynamic agents (pedestrians) intersect the robot's planned global path perpendicularly, testing the planner's reaction time and emergency stop safety nets.
+    \item Narrow Corridor: The UGV navigated a tightly bounded virtual OSM corridor ($4\text{ m}$ wide) containing static obstacles, forcing the optimizer to be precise.
+\end{itemize}
+
+\subsection{Baseline Comparison}
+
+To assess the performance of the proposed architecture, it was benchmarked against the industry-standard ROS2 Nav2 stack~\cite{nav2_docs}. Nav2 provides two primary local planner options: DWA~\cite{fox1997dwa} and MPPI~\cite{williams2016mppi}. Because MPPI is highly resource-intensive and often requires GPU acceleration~\cite{min2026offroad}, DWA was used as the baseline.
+
+To ensure a fair comparison, Nav2 was configured to operate under the identical lightweight sensor constraints. Rather than utilizing SLAM or heavy visual odometry, Nav2 was provided with a static occupancy grid corresponding to the OSM path limits and relied on its local costmap (populated by the 2D LiDAR) for obstacle detection. Both systems were given the same sequence of global waypoints generated by the A* graph search, isolating the comparison strictly to the efficiency and safety of the local trajectory execution.
+
+\subsection{Evaluation Metrics}
+
+The experimental evaluation focused exclusively on the performance of the local trajectory optimization and obstacle avoidance systems. The global routing component (the A* graph search over the OSM network) was excluded from benchmarking. A* is a deterministic, mathematically complete, and optimal algorithm~\cite{hart1968astar} -- given an admissible heuristic, it is proven to find the optimal path if one exists. Therefore, evaluating its success provides no insight. Instead, the metrics were designed to evaluate how efficiently and safely the system executed that predefined global path in the presence of dynamic, unmapped constraints. 
+
+Quantitative data was collected over $N=30$ independent simulated runs for each test scenario to evaluate the performance of the proposed system against the Nav2 baseline. The data was analyzed using descriptive statistics.
+
+\subsubsection{Primary Navigation Metrics}
+
+\begin{itemize}
+    \item Success Rate (\%): The percentage of experimental runs where the UGV successfully navigated from the start point to within $1$ meter of the final target destination. A run was classified as a failure if the UGV collided with an obstacle, triggered an unrecoverable safety emergency stop, or exceeded a timeout limit.
+    \item E-Stop Rate (\%): The percentage of failures that resulted in a proactive emergency stop. This metric provides insight into the reliability of the system's safety nets.
+    \item Path Efficiency (Ratio): Measured as the actual distance traveled by the UGV divided by the shortest-path distance generated by the global A* planner. A score of $1.0$ implies the UGV followed the center of the path perfectly.
+    \item Mean Travel Time (s): The average time required to complete successful runs. The standard deviation was also calculated to evaluate the consistency of the planner's behavior.
+\end{itemize}
+
+\subsubsection{Resource Efficiency Metrics}
+
+Because the work prioritizes computational accessibility, resource consumption is an important benchmark. Both the average values (mean) and the consistency (standard deviation, 5th percentile lows) were evaluated. During the simulation runs, system telemetry was logged at 1 Hz intervals to measure:
+
+\begin{itemize}
+    \item CPU Utilization (\%)
+    \item Memory Footprint (MB)
+    \item Control frame frequency (Hz): The number of control commands generated and sent by the algorithm per second.
+\end{itemize}

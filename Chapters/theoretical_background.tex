@@ -6,10 +6,10 @@
 
 Autonomous navigation systems rely on a number of sensors to perceive the environment and estimate the vehicle's state. Because a core objective of this research is resource efficiency, it is important to understand the capabilities and limitations of the minimal sensor suite:
 \begin{itemize}
-\item \textbf{Wheel Odometry:} Uses wheel encoders to estimate the robot's relative displacement by measuring the rotation of its wheels. While useful for short-term tracking, it accumulates drift over time due to mechanical slip, which is especially prominent in skid-steer Unmanned Ground Vehicle (UGV) configurations~\cite{mandow2007kinematics}.
-\item \textbf{Inertial Measurement Unit (IMU):} Contains accelerometers and gyroscopes to measure linear acceleration and angular velocity. It provides frequent motion updates but suffers from integration drift and bias, meaning small noise errors grow quadratically over time.
-\item \textbf{Global Positioning System (GPS):} Provides absolute geographic positioning (latitude, longitude) by triangulating satellite signals. However, it is prone to high-frequency noise, low update rates, and signal degradation under trees or near tall structures~\cite{schmidt2025vislam}.
-\item \textbf{2D LiDAR (Light Detection and Ranging):} Uses laser pulses to measure distances in a single horizontal plane, outputting a point cloud in polar coordinates. While computationally much lighter than 3D LiDAR, it lacks vertical resolution and cannot distinguishing between ground features (such as hills) and vertical obstacles.
+\item Wheel Odometry: Uses wheel encoders to estimate the robot's relative displacement by measuring the rotation of its wheels. While useful for short-term tracking, it accumulates drift over time due to mechanical slip, which is especially prominent in skid-steer Unmanned Ground Vehicle (UGV) configurations~\cite{mandow2007kinematics}.
+\item Inertial Measurement Unit (IMU): Contains accelerometers and gyroscopes to measure linear acceleration and angular velocity. It provides frequent motion updates but suffers from integration drift and bias, meaning small noise errors grow quadratically over time.
+\item Global Positioning System (GPS): Provides absolute geographic positioning (latitude, longitude) by triangulating satellite signals. However, it is prone to high-frequency noise, low update rates, and signal degradation under trees or near tall structures~\cite{schmidt2025vislam}.
+\item 2D LiDAR (Light Detection and Ranging): Uses laser pulses to measure distances in a single horizontal plane, outputting a point cloud in polar coordinates. While computationally much lighter than 3D LiDAR, it lacks vertical resolution and cannot distinguishing between ground features (such as hills) and vertical obstacles.
 \end{itemize}
 
 \section{Differential Drive UGV}
@@ -19,8 +19,8 @@ In this thesis, the robot uses a four-wheeled skid-steer differential drive conf
 To generate realistic and executable trajectories, autonomous planners must respect the physical limitations of the robot, which are broadly categorized into kinematic and dynamic constraints. Together, these form the robot's kinodynamic constraints.
 
 \begin{itemize}
-    \item \textbf{Kinematic constraints}. A differential drive system acts under non-holonomic kinematic constraints: it can rotate in place and move forward or backward, but it cannot move laterally (it cannot slide sideways). Therefore, the robot's state transitions are controlled by its linear ($v$) and angular ($\omega$) velocities~\cite{minguez2008motion}. If a planner generates a path that requires lateral movement, the hardware physically cannot execute it.
-    \item \textbf{Dynamic constraints}. The UGV has physical mass and limited motor torque, so it cannot change velocities instantly. Therefore, dynamic cosntraints define robot's maximum achievable velocities ($v_{max}$, $\omega_{max}$) and maximum accelerations ($a_{max}$, $\epsilon_{max}$).
+    \item Kinematic constraints. A differential drive system acts under non-holonomic kinematic constraints: it can rotate in place and move forward or backward, but it cannot move laterally (it cannot slide sideways). Therefore, the robot's state transitions are controlled by its linear ($v$) and angular ($\omega$) velocities~\cite{minguez2008motion}. If a planner generates a path that requires lateral movement, the hardware physically cannot execute it.
+    \item Dynamic constraints. The UGV has physical mass and limited motor torque, so it cannot change velocities instantly. Therefore, dynamic cosntraints define robot's maximum achievable velocities ($v_{max}$, $\omega_{max}$) and maximum accelerations ($a_{max}$, $\epsilon_{max}$).
 \end{itemize}
 
 
