@@ -10,17 +10,17 @@ It is often infeasible to manually control such vehicles due to their sheer numb
 
 Outdoors, there are challenges of an unpredictable environment: unexpected/moving obstacles, surrounding agents (like other vehicles or pedestrians) do not cooperate, uneven terrain, etc.
 
-Today, there are ready-made solutions for autonomous navigation (like default Nav2 in ROS). However, modern outdoor systems often rely on heavy sensors (3D LiDAR, RGB-D cameras) and algorithms to process this data (Visual SLAM, MPPI). These require high computational resources, lots of RAM, and sometimes GPUs. This is expensive, it drains battery and not always possible on simple low-cost robots.
+Today, there are ready-made solutions for autonomous navigation (like default Nav2 in ROS~\cite{nav2_docs}). However, modern outdoor systems often rely on heavy sensors (3D LiDAR, RGB-D cameras) and algorithms to process this data (Visual SLAM~\cite{schmidt2025vislam}, MPPI~\cite{williams2016mppi}). These require high computational resources, lots of RAM, and sometimes GPUs. This is expensive, it drains battery and not always possible on simple low-cost robots.
 
 Therefore, there is a motivation to see what can be accomplished using a minimal, lightweight sensor suite. By avoiding heavy computations, we can create a more accessible and energy-efficient system.
 
-Instead of calculating a map from scratch using SLAM, we can use existing, semantic data like OpenStreetMap (OSM) for global routing.
+Instead of calculating a map from scratch using SLAM, we can use existing, semantic data like OpenStreetMap (OSM) for global routing~\cite{hentschel2010osm}.
 Instead of 3D point clouds or image processing, we can use a simple 2D LiDAR to handle immediate, dynamic obstacles (like pedestrians or trees).
-Instead of visual odometry, we can rely on standard GPS fused with an IMU and wheel odometry.
+Instead of visual odometry, we can rely on standard GPS fused with an IMU and wheel odometry~\cite{moore2015ekf}.
 
 Together, these lightweight components theoretically provide all the necessary data for a robot to navigate (albeit in lower fidelity and density, higher sparcity). This thesis aims to prove that such a minimal setup is actually viable in the real world.
 
-The setup includes a ground differentially driven robot outdoors in a park. Pedestrian paths provide a semi-structured topologically known environment. Unlike road networks, pedestrian zones lack traffic rules, lane changes, or traffic lights, eliminating the need for heavy semantic computer vision processing. However, unlike completely unstructured off-road scenarios, these paths have clear geometric boundaries that can be modeled and tracked. The system's objective is to navigate autonomously from a start point to a target point without human intervention.
+The setup includes a ground differentially driven robot outdoors in a park. Pedestrian paths provide a semi-structured topologically known environment. Unlike road networks, pedestrian zones lack traffic rules, lane changes, or traffic lights, eliminating the need for heavy semantic computer vision processing. However, unlike completely unstructured off-road scenarios~\cite{min2026offroad}, these paths have clear geometric boundaries that can be modeled and tracked. The system's objective is to navigate autonomously from a start point to a target point without human intervention.
 
 \section{Objectives}
 
@@ -30,8 +30,6 @@ The setup includes a ground differentially driven robot outdoors in a park. Pede
 \item Local navigation -- combine spatial localization (GPS and IMU+Wheel Odometry -- sensor fusion via Extended Kalman Filter) and local path planning (using an optimization algorithm Timed Elastic Band) to avoid obstacles and follow the global path.
 \end{itemize}
 
-% TODO if really did it:
-% Conducted real-world experiments in public environment (Stryyskyi Park).
 Conducted experiments in simulation. Evaluated the system's success rate, safety, and travel time. Provided a baseline comparison against the standard Nav2 implementation.
 
 \section{Structure Of The Thesis}

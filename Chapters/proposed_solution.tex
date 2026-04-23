@@ -7,17 +7,23 @@ The objective of this research is to enable an UGV to reach a target position (d
 
 The core constraint of the problem is to design a resource-efficient setup using a minimal sensor suite (2D LiDAR, GPS, IMU, wheel odometry) without relying on computationally intensive and energy-demanding hardware like GPUs, 3D LiDARs, or RGB-D cameras. By combining semantic-graph-based global routing with receding-horizon local trajectory optimization, the system minimizes computational demands while maintaining reliable obstacle avoidance and spatial accuracy.
 
-\section{Hardware Setup}
+\section{Hardware and Environment Setup}
 
 The experimental subject of this research is the Clearpath Husky A200 (cite clearpath website or something), a medium-sized UGV. The Husky is a rugged, four-wheeled skid-steer platform designed for research applications. It has a physical footprint of $99 \times 67 \times 39 \text{ cm}$, weighing approximately $50 \text{ kg}$.
 
 The UGV is equipped with a minimal sensor suite, which includes:
 \begin{itemize}
-    \item Built-in Wheel Encoders, with the frequency of $78 000\text{ ticks/m}$
+    \item Built-in Wheel Encoders, with the frequency of $78 000\text{ ticks/m}$.
     \item IMU: % TODO: specify the model
     \item 2D LiDAR: % TODO: specify the model
     \item GPS Receiver: % TODO: specify the model
-    \item Compute Unit: ROS2 Jazzy % TODO: specify the models
+    \item Compute Unit: ROS2 Jazzy~\cite{macenski2022ros2} % TODO: specify the models
+\end{itemize}
+
+The proposed system was designed for Stryiskyi Park, Lviv, Ukraine. The environment is semi-structured, featuring mapped, paved pedestrian paths but lacking traffic rules or lane markings. While the park's topography includes both flat and hilly regions, this work is built for predominantly flat sections, as navigation on hilly terrains using only 2D sensors poses additional challenges in ground removal and obstacle filtering~\cite{kim2020hilly}. There are some challenges in this environment:
+\begin{itemize}
+    \item The park features dense tree coverage, which might degrade GPS signals, testing the resilience of the EKF sensor fusion.
+    \item There are dynamic, non-cooperative entities -- primarily pedestrians, bicycles, and pets -- whose unpredictable trajectories test the responsiveness real-time collision avoidance capabilities of the system.
 \end{itemize}
 
 \section{System Architecture}
@@ -32,7 +38,7 @@ The system consists of two ROS2 nodes:
 
 \subsection{Semantic Mapping and Global Routing}
 
-OSM is used for a semantic map. To process this data, the Python \texttt{osmnx} library is utilized. It allows for the extraction of a multigraph for a specific OSM polygon relation (such as the park boundary), where traversable paths act as edges and intersections act as vertices. To filter out non-navigable terrain, the following edge tags are evaluated:
+OSM is used for a semantic map. To process this data, the Python \texttt{osmnx} library~\cite{boeing2017osmnx} is utilized. It allows for the extraction of a multigraph for a specific OSM polygon relation (such as the park boundary), where traversable paths act as edges and intersections act as vertices. To filter out non-navigable terrain, the following edge tags are evaluated:
 \begin{itemize}
 	\item \texttt{surface=}. Surfaces other than \texttt{paved, asphalt, concrete, paving\_stones, sett, cobblestone} are excluded.
 	\item \texttt{highway=}. For example, \texttt{motorway} and \texttt{cycleway} are excluded.
@@ -71,11 +77,9 @@ Another EKF is used to take into account low-frequency GPS data. It is projected
 
 In fallback scenarios where GPS is disabled or unavailable, the direction to the global goal is only updated using the first filter, which uses IMU and wheel odometry.
 
-% TODO: diagram, of how these relate (one filter uses another)
-
 \subsection{Local Trajectory Optimization}
 
-A custom Python implementation of the Timed Elastic Band (TEB) algorithm was developed, utilizing the \texttt{pyceres} library for non-linear optimization. % TODO: what is this lib's relation to Ceres
+A custom Python implementation of the Timed Elastic Band (TEB) algorithm was developed, utilizing the \texttt{pyceres} library~\cite{sarlin2025pyceres} for non-linear optimization. \texttt{pyceres} provides minimal Python bindings that expose the core functionality of the highly optimized C++ Ceres Solver~\cite{agarwal2012ceres}, allowing the high-level logic to be orchestrated in Python while maintaining near-native execution speeds.
 
 \subsubsection{Local Goal Selection and State Representation}
 Because optimizing a trajectory all the way to the final destination is infeasible to compute in real time, the TEB planner operates on a sliding window. At each control loop, the UGV's current position is projected onto the global path (the closest waypoint to the current position is selected). The algorithm traverses the path forward until an accumulated length is equal to the predefined lookahead distance. This coordinate becomes the temporary local goal for the optimizer. If the local goal falls inside or too close to an obstacle, it is slided along the global path until a free space is found.
@@ -86,7 +90,7 @@ To ensure the solver remains stable, the trajectory resolution is dynamically re
 While standard kinematic, dynamic, time, and circular obstacle costs (as defined in Section 2.5) were utilized in the system, specific custom formulations had to be derived for linear obstacles and start conditions to maintain solver stability in Pyceres.
 
 \paragraph{Line Obstacle Cost}
-Calculating the exact shortest distance between two line segments introduces non-differentiable edge cases. To solve this and maintain smooth Jacobians for the Ceres solver, a custom residual was derived. The minimum distance from the trajectory segment (endpoints $A, B$) to the obstacle segment (endpoints $C, D$) is approximated using a LogSumExp (Softmin) function over the four endpoint-to-segment distances ($d_A \dots d_D$):
+Calculating the exact shortest distance between two line segments introduces non-differentiable edge cases. To solve this and maintain smooth Jacobians for the Ceres solver, a custom residual was derived. The minimum distance from the trajectory segment (endpoints $A, B$) to the obstacle segment (endpoints $C, D$) is approximated using a LogSumExp (Softmin) function~\cite{boyd_vandenberghe_2004} over the four endpoint-to-segment distances ($d_A \dots d_D$):
 \begin{equation}
 	d_{min} = -\frac{1}{\alpha} \ln \left( \sum_{k=1}^4 \exp(-\alpha \cdot d_k) \right)
 \end{equation}
@@ -104,14 +108,13 @@ For the first segment of the trajectory (from the current position to the first 
 To prevent this, a custom dynamic cost is implemented specifically for the starting position. It uses the robot's current velocity ($\vec{v}_{curr}, \omega_{curr}$), retrieved directly from the state estimation sensors, to calculate the acceleration and angular acceleration costs for the first trajectory segment.
 
 \subsubsection{Jacobians and Ceres Problem Setup}
-The standard ROS implementation of TEB relies on C++ and the \texttt{g2o} library However, because the TEB objective function is fundamentally a sum of squared weighted residuals, it can be easily adapted into a general-purpose non-linear least-squares framework. For this custom Python architecture, Google's Ceres Solver~\cite{agarwal2022ceres} was chosen via the \texttt{pyceres} library.
+The standard ROS implementation of TEB relies on C++ and the \texttt{g2o} library However, because the TEB objective function is fundamentally a sum of squared weighted residuals, it can be easily adapted into a general-purpose non-linear least-squares framework. For this custom Python architecture, Google's Ceres Solver~\cite{agarwal2012ceres} was chosen via the \texttt{pyceres} library.
 
 While \texttt{g2o} uses predefined graph edges, Ceres allows for the manual definition of residual blocks. Because \texttt{pyceres} lacks the C++ compile-time automatic differentiation feature of the native Ceres library, the partial derivatives for all implemented residuals were calculated analytically and provided directly to the solver.
 
 To ensure the optimization can run in real-time, an obstacle filter is applied before constructing the Ceres problem. Rather than evaluating every obstacle against every pose, the system pre-calculates distances and only adds residual blocks to the solver for obstacles posing an immediate collision threat to specific segments. All obstacle parameters are pre-extracted into arrays upon initialization, allowing for vectorized operations instead of slow iterative loops.
 
-The problem is solved using the Sparse Normal Cholesky linear solver via \texttt{pyceres}. Due to Python limitations (% TODO: cite GIL
-), performance drops when increasing the number of threads, so the optimization is strictly restricted to a single thread. To maintain a predictable control rate, the solver is capped at a strict maximum number of iterations. % TODO: explain, why Sparse Cholesky - because the same as in 2013 TEB paper (though they used g2o there, but the underlying algorithm was still the same)
+The problem is solved using the Sparse Normal Cholesky linear solver via \texttt{pyceres}. Due to Python limitations, specifically the Global Interpreter Lock (GIL)~\cite{van2009python3}, performance drops when increasing the number of threads, so the optimization is strictly restricted to a single thread. To maintain a predictable control rate, the solver is capped at a strict maximum number of iterations. The Sparse Normal Cholesky solver was selected because the TEB optimization problem produces a highly sparse Jacobian matrix, which this decomposition solves efficiently, as also demonstrated in the original TEB formulation~\cite{rosmann2013sparse}.
 
 \subsubsection{Latency Compensation}
 The implementation uses a warm start approach to maintain temporal coherence. However, because non-linear optimization introduces computational latency, the UGV physically moves while the solver runs. If the trajectory state was preserved blindly, the initial poses would be outdated by the time the next frame begins.
@@ -177,5 +180,3 @@ If the controller is actively publishing velocity commands, but the sensors repo
 \subsubsection{Network and Operator Override}
 
 The UGV operates autonomously but must remain under the ultimate supervision of a human operator using the off-board Visualization node. The UI publishes a continuous heartbeat signal over the local network. If the controller does not receive this signal for $5\text{ seconds}$, it assumes the network connection has dropped. The robot automatically halts to ensure the operator never loses the ability to trigger a remote software cancellation.
-
-

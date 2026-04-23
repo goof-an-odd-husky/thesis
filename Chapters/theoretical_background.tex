@@ -6,9 +6,9 @@
 
 Autonomous navigation systems rely on a number of sensors to perceive the environment and estimate the vehicle's state. Because a core objective of this research is resource efficiency, it is important to understand the capabilities and limitations of the minimal sensor suite:
 \begin{itemize}
-\item \textbf{Wheel Odometry:} Uses wheel encoders to estimate the robot's relative displacement by measuring the rotation of its wheels. While useful for short-term tracking, it accumulates drift over time due to mechanical slip, which is especially prominent in skid-steer Unmanned Ground Vehicle (UGV) configurations.
+\item \textbf{Wheel Odometry:} Uses wheel encoders to estimate the robot's relative displacement by measuring the rotation of its wheels. While useful for short-term tracking, it accumulates drift over time due to mechanical slip, which is especially prominent in skid-steer Unmanned Ground Vehicle (UGV) configurations~\cite{mandow2007kinematics}.
 \item \textbf{Inertial Measurement Unit (IMU):} Contains accelerometers and gyroscopes to measure linear acceleration and angular velocity. It provides frequent motion updates but suffers from integration drift and bias, meaning small noise errors grow quadratically over time.
-\item \textbf{Global Positioning System (GPS):} Provides absolute geographic positioning (latitude, longitude) by triangulating satellite signals. However, it is prone to high-frequency noise, low update rates, and signal degradation under trees or near tall structures.
+\item \textbf{Global Positioning System (GPS):} Provides absolute geographic positioning (latitude, longitude) by triangulating satellite signals. However, it is prone to high-frequency noise, low update rates, and signal degradation under trees or near tall structures~\cite{schmidt2025vislam}.
 \item \textbf{2D LiDAR (Light Detection and Ranging):} Uses laser pulses to measure distances in a single horizontal plane, outputting a point cloud in polar coordinates. While computationally much lighter than 3D LiDAR, it lacks vertical resolution and cannot distinguishing between ground features (such as hills) and vertical obstacles.
 \end{itemize}
 
@@ -98,7 +98,7 @@ Traditionally, the TEB algorithm models the trajectory optimization as a hyper-g
 To solve this objective function, optimization engines require Jacobians -- matrices of partial derivatives indicating how changes in the trajectory parameters affect the total cost. These matrices are used to find the gradient of the cost functions and can be calculated analytically or numerically. Because trajectory constraints usually affect only adjacent poses, the resulting mathematical system is highly sparse. Solvers apply sparse factorization methods (such as Cholesky decomposition) to efficiently solve the equations, iteratively updating the parameters until they converge on a smooth, physically feasible trajectory.
 
 \subsection{Temporal Coherence}
-If an optimizer starts from a blank slate (a cold start) at every control step, it may fail to converge within strict time limits and may lead to inconsistent trajectories. Model Predictive Control (MPC) approaches, including TEB, solve this by utilizing a Warm Start~\cite{rosmann2013sparse}. Because the environment changes slightly between control frames, the optimized trajectory from the previous time step can be preserved and used as the initial guess for the next iteration. This temporal coherence reduces the number of iterations required for the solver to find a local minimum.
+If an optimizer starts from a blank slate (a cold start) at every control step, it may fail to converge within strict time limits and may lead to inconsistent trajectories. MPC-style approaches, including TEB, solve this by utilizing a Warm Start~\cite{rosmann2013sparse}. Because the environment changes slightly between control frames, the optimized trajectory from the previous time step can be preserved and used as the initial guess for the next iteration. This temporal coherence reduces the number of iterations required for the solver to find a local minimum.
 
 \section{Sensor Fusion}
 
@@ -108,7 +108,7 @@ The Kalman Filter fuses sensor streams into a single reliable state estimate~\ci
 
 The standard Kalman Filter assumes linear system dynamics. However, mobile robots involve non-linear movements, such as turning and circular trajectories, which require trigonometric functions. The Extended Kalman Filter addresses this by linearizing motion and models at the current state estimate (achieved through Taylor series expansion)~\cite{moore2015ekf}.
 
-This fusion also ensures that even if a sensor like GPS becomes temporarily unavailable, the robot can continue to navigate using its internal motion model until the absolute signal is restored.
+This fusion also ensures that even if a sensor like GPS becomes temporarily unavailable, the robot can continue to navigate using its internal motion model until the absolute signal is restored, though this dead reckoning fallback is inherently time-limited before accumulated drift exceeds safe operational thresholds~\cite{brossard2020aiimu}.
 
 \section{Geometric Feature Extraction}
 
