@@ -8,17 +8,23 @@ Mobile robotic systems are an important field, especially for tasks that are mon
 
 Outdoor navigation is typically more complex than indoor navigation. Systems must handle less predictable conditions, such as moving obstacles, uneven terrain, and pedestrians who do not necessarily cooperate with the robot.
 
-Today, ready-made solutions for autonomous navigation exist, such as the Nav2 stack in ROS~\cite{nav2_docs}. However, modern outdoor systems often rely on heavy sensors (like 3D LiDAR and RGB-D cameras) and complex algorithms (like Visual SLAM~\cite{schmidt2025vislam} and MPPI~\cite{williams2016mppi}). These methods demand high computational resources, large amounts of RAM, and sometimes GPUs. This increases costs, drains battery life, and is not always possible on simple, low-cost platforms.
+Today, ready-made solutions for autonomous navigation exist, such as the Nav2 stack in ROS~\cite{nav2_docs}. However, modern outdoor systems often rely on heavy sensors 
+% O.F. Оце heavy sensors мене напрягає, зізнаюся -- можуть виникнути питання. Можливо, варто тут більше написати подробиць, окреслити спектр рішень і де Ваше поміж них. Маса-точніст-енергоспоживання-потоки даних etc
+(like 3D LiDAR and RGB-D cameras) and complex algorithms (like Visual SLAM~\cite{schmidt2025vislam} and MPPI~\cite{williams2016mppi}). These methods demand high computational resources, large amounts of RAM, and sometimes GPUs. This increases costs, drains battery life, and is not always possible on simple, low-cost platforms.
 
 Therefore, there is a motivation to explore what can be accomplished using a minimal, lightweight sensor suite. By avoiding heavy computations, it is possible to build a more accessible and energy-efficient system.
 
 Instead of generating a map from scratch using SLAM, existing semantic data such as OpenStreetMap (OSM) can be used for global routing~\cite{hentschel2010osm}. Instead of processing 3D point clouds or images, a simple 2D LiDAR can handle immediate, dynamic obstacles like pedestrians or trees. Finally, instead of using visual odometry, the system can rely on standard GPS fused with an IMU and wheel odometry for localization~\cite{moore2015ekf}.
 
-Together, these lightweight components provide all the necessary data for a robot to navigate, albeit with lower spatial fidelity. This thesis aims to demonstrate that such a minimal setup is viable and effective in the real world.
+Together, these lightweight components provide all the necessary data for a robot to navigate, albeit with lower spatial fidelity. This thesis aims to demonstrate that such a minimal setup is viable and effective in the real world. % O.F. Як на мене, тут варто конкретніше про те, що демонструється -- на додачу до сказаного
 
-The setup includes a differential-drive ground robot in an outdoor park. Pedestrian paths provide a semi-structured, topologically known environment. Unlike road networks, pedestrian zones lack strict traffic rules or lane changes, eliminating the need for heavy semantic computer vision processing. However, unlike completely unstructured off-road environments~\cite{min2026offroad}, these paths have clear geometric boundaries that can be modelled and tracked. The system's objective is to navigate autonomously from a start point to a target point without human intervention.
+The setup includes a differential-drive ground robot in an outdoor park. Pedestrian paths provide a semi-structured, topologically known environment. Unlike road networks, pedestrian zones lack strict traffic rules or lane changes, eliminating the need for heavy semantic computer vision processing.
+% O.F. Може то занадто сильно, що аж eliminating? 
+However, unlike completely unstructured off-road environments~\cite{min2026offroad}, these paths have clear geometric boundaries that can be modelled and tracked. The system's objective is to navigate autonomously from a start point to a target point without human intervention.
 
 \section{Objectives}
+
+% O.F. Щось воно мені зовсім як "цілі" не звучить... Це ніби цілі робота, не Ваші цілі описано, а потім Ви зразу про результати. Чи потрібно детальніше пояснення, про що я? 
 
 \begin{itemize}
 \item Path planning: find a global route based on an OpenStreetMap environment graph using the A* search algorithm.
