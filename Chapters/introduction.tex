@@ -4,7 +4,7 @@
 
 \section{Background and Motivation}
 
-Mobile robotic systems are an important field, especially for tasks that are monotonous, remote, or located in hazardous environments. Manual control of such robots is often infeasible due to the sheer number of systems and the volume of their tasks. Furthermore, physical barriers such as distance or signal interference can cause remote control to fail. Therefore, autonomous systems are necessary to independently determine paths and navigate toward target locations.
+Mobile robotic systems are an important field, especially for tasks that are monotonous, remote, or located in hazardous environments. Manual control of such robots is often infeasible due to the sheer number of systems and the volume of their tasks. Furthermore, physical barriers such as distance or signal interference can cause the remote control to fail. Therefore, autonomous systems are necessary to independently determine paths and navigate toward target locations.
 
 Outdoor navigation is typically more complex than indoor navigation. Systems must handle less predictable conditions, such as moving obstacles, uneven terrain, and pedestrians who do not necessarily cooperate with the robot.
 
@@ -12,11 +12,11 @@ Today, ready-made solutions for autonomous navigation exist, such as the Nav2 st
 
 Therefore, there is a motivation to explore what can be accomplished using a minimal, lightweight sensor suite. By avoiding heavy computations, it is possible to build a more accessible and energy-efficient system.
 
-Instead of generating a map from scratch using SLAM, existing semantic data like OpenStreetMap (OSM) can be used for global routing~\cite{hentschel2010osm}. Instead of processing 3D point clouds or images, a simple 2D LiDAR can handle immediate, dynamic obstacles like pedestrians or trees. Finally, instead of using visual odometry, the system can rely on standard GPS fused with an IMU and wheel odometry for localization~\cite{moore2015ekf}.
+Instead of generating a map from scratch using SLAM, existing semantic data such as OpenStreetMap (OSM) can be used for global routing~\cite{hentschel2010osm}. Instead of processing 3D point clouds or images, a simple 2D LiDAR can handle immediate, dynamic obstacles like pedestrians or trees. Finally, instead of using visual odometry, the system can rely on standard GPS fused with an IMU and wheel odometry for localization~\cite{moore2015ekf}.
 
 Together, these lightweight components provide all the necessary data for a robot to navigate, albeit with lower spatial fidelity. This thesis aims to demonstrate that such a minimal setup is viable and effective in the real world.
 
-The setup includes a differential-drive ground robot in an outdoor park. Pedestrian paths provide a semi-structured, topologically known environment. Unlike road networks, pedestrian zones lack strict traffic rules or lane changes, eliminating the need for heavy semantic computer vision processing. However, unlike completely unstructured off-road environments~\cite{min2026offroad}, these paths have clear geometric boundaries that can be modeled and tracked. The system's objective is to navigate autonomously from a start point to a target point without human intervention.
+The setup includes a differential-drive ground robot in an outdoor park. Pedestrian paths provide a semi-structured, topologically known environment. Unlike road networks, pedestrian zones lack strict traffic rules or lane changes, eliminating the need for heavy semantic computer vision processing. However, unlike completely unstructured off-road environments~\cite{min2026offroad}, these paths have clear geometric boundaries that can be modelled and tracked. The system's objective is to navigate autonomously from a start point to a target point without human intervention.
 
 \section{Objectives}
 
