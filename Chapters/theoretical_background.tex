@@ -2,109 +2,135 @@
 
 \chapter{Theoretical Background}
 
+% O.F. Бракує мені в цьому місці якогось огляду, опису структури, про яку далі, може якихось схем абощо: функціональної блок схеми, діаграми потоку даних тощо. Без того не факт, чи читачеві буде зрозумілий Ваш задум.
+
 \section{Sensor Characteristics}
 
-Autonomous navigation systems rely on a number of sensors to perceive the environment and estimate the vehicle's state. Because a core objective of this research is resource efficiency, it is important to understand the capabilities and limitations of the minimal sensor suite:
+% O.F. Розвиваючи зауваження пана Олександра, тут бракує конкретики -- чисел, які, хай за порядком величини, оцінюють.
+
+Autonomous navigation systems rely on multiple to perceive the environment and estimate the vehicle's state. Because a core objective of this research is resource efficiency, it is important to understand the capabilities and limitations of the minimal sensor suite:
 \begin{itemize}
-\item Wheel Odometry: Uses wheel encoders to estimate the robot's relative displacement by measuring the rotation of its wheels. While useful for short-term tracking, it accumulates drift over time due to mechanical slip, which is especially prominent in skid-steer Unmanned Ground Vehicle (UGV) configurations~\cite{mandow2007kinematics}.
-\item Inertial Measurement Unit (IMU): Contains accelerometers and gyroscopes to measure linear acceleration and angular velocity. It provides frequent motion updates but suffers from integration drift and bias, meaning small noise errors grow quadratically over time.
-\item Global Positioning System (GPS): Provides absolute geographic positioning (latitude, longitude) by triangulating satellite signals. However, it is prone to high-frequency noise, low update rates, and signal degradation under trees or near tall structures~\cite{schmidt2025vislam}.
-\item 2D LiDAR (Light Detection and Ranging): Uses laser pulses to measure distances in a single horizontal plane, outputting a point cloud in polar coordinates. While computationally much lighter than 3D LiDAR, it lacks vertical resolution and cannot distinguishing between ground features (such as hills) and vertical obstacles.
+\item Wheel Encoders: Uses wheel encoders to estimate the robot's relative displacement by measuring the rotation of its wheels. While useful for short-term tracking, it accumulates drift over time due to mechanical slip, which is especially prominent in skid-steer Unmanned Ground Vehicle (UGV) configurations where wheel slip is significant~\cite{mandow2007kinematics}.
+\item Inertial Measurement Unit (IMU): Contains accelerometers and gyroscopes to measure linear acceleration and angular velocity. It provides frequent motion updates but suffers from integration drift and bias, meaning small noise errors grow quadratically over time. 
+% O.F. Не квадратично! Це помилка. Десь гірше, десь краще -- запитайте Костю щодо конкретних статей, переофрмулюйте і дайте тут відповідне посилання! Сходу мені проситься An Introduction to inertial navigation, O. Woodman, див. там табл. 3 і табл. 2, але може він кращі знає.
+\item Global Positioning System (GPS): Provides absolute geographic positioning (latitude, longitude) by trilaterating satellite signals. However, it is prone to high-frequency noise, low update rates, and signal degradation under trees or near tall structures~\cite{schmidt2025vislam}. % O.F. Я вище трохи правив -- скажіть тут більш загально, про перешкоди, відбиття і т.д., не лише про дерева: signal obstruction, multipath effects, and interference from surrounding objects, щось таке. Крім того, була помилка -- не triangulating, виправи.
+\item 2D LiDAR (Light Detection and Ranging): Uses laser pulses to measure distances in a single horizontal plane, outputting a point cloud in polar coordinates. While computationally much lighter than 3D LiDAR, it lacks vertical resolution and cannot directly capture vertical structure, such as distinguish between terrain features and vertical obstacles.
 \end{itemize}
 
 \section{Differential Drive UGV}
 
 In this thesis, the robot uses a four-wheeled skid-steer differential drive configuration. While the machine has four points of contact with the ground, steering is achieved through a velocity differential between the left and right wheel pairs.
 
-To generate realistic and executable trajectories, autonomous planners must respect the physical limitations of the robot, which are broadly categorized into kinematic and dynamic constraints. Together, these form the robot's kinodynamic constraints.
+To generate realistic and executable trajectories, autonomous planners must respect the physical limitations of the robot, which are broadly categorized into kinematic and dynamic constraints. Together, these define the robot's kinodynamic constraints.
 
 \begin{itemize}
-    \item Kinematic constraints. A differential drive system acts under non-holonomic kinematic constraints: it can rotate in place and move forward or backward, but it cannot move laterally (it cannot slide sideways). Therefore, the robot's state transitions are controlled by its linear ($v$) and angular ($\omega$) velocities~\cite{minguez2008motion}. If a planner generates a path that requires lateral movement, the hardware physically cannot execute it.
-    \item Dynamic constraints. The UGV has physical mass and limited motor torque, so it cannot change velocities instantly. Therefore, dynamic cosntraints define robot's maximum achievable velocities ($v_{max}$, $\omega_{max}$) and maximum accelerations ($a_{max}$, $\epsilon_{max}$).
+    \item Kinematic constraints. A differential drive system acts under non-holonomic kinematic constraints: it can rotate in place and move forward or backward, but it cannot move laterally (it cannot slide sideways) without sliding. Therefore, the robot is controlled via its linear ($v$) and angular ($\omega$) velocities~\cite{minguez2008motion}. If a planner generates a path that requires lateral movement, the hardware physically cannot execute it.
+    \item Dynamic constraints. The UGV has physical mass and limited motor torque, so it cannot change velocities instantly. Therefore, dynamic constraints define the robot's maximum achievable velocities ($v_{max}$, $\omega_{max}$) and maximum accelerations ($a_{max}$, $\epsilon_{max}$). % O.F. Крутильний момент тут ще певне важливий! Коробку передач згадайте :=) 
 \end{itemize}
 
 
-Unlike two-wheeled systems, the four-wheeled configuration introduces lateral slip (skidding) during rotation, which increases drift in wheel-based odometry~\cite{mandow2007kinematics}. Thus, accurate sensor fusion becomes more important to correct for the drift.
+Unlike two-wheeled systems, the four-wheeled configuration introduces lateral slip (skidding) during rotation, which increases drift in wheel-based odometry~\cite{mandow2007kinematics}. % O.F. Твердження, в цілому правильне, але знову, (через економію букв?) надміру загальне і тому дискусійне
+Thus, accurate sensor fusion becomes more important to correct for the drift.
 
 \section{Hierarchical Navigation Architecture}
 
-Classical autonomous navigation typically employs a hierarchical, two-level architecture. Planning a kinematically feasible, collision-free trajectory from a starting point to a distant goal in a single step is computationally too expensive. Therefore, the problem is split into global and local planning. The global planner operates on a static map to find a purely topological route to the destination, ignoring the vehicle's kinematics and dynamic obstacles. The local planner then acts upon a small sliding window of this global route, functioning in real-time and generating motion commands that avoid immediate, unexpected obstacles.
+Classical autonomous navigation typically employs a hierarchical, two-level architecture.
+% O.F. Знову мені тут бачиться надмірне спрощення. Додайте посилання, якщо наполягаєте, що це домінуючий спосіб, і, в будь якому випадку, скажіть трохи загальніше. 
+% O.F. Взагалі, до цього розділу -- якщо методів кілька, а Ви обрали один, опишіть -- чому. 
+Planning a kinematically feasible, collision-free trajectory from a starting point to a distant goal in a single step is computationally too expensive. 
+% O.F. Та ж проблема. Сама задача має ієрархічність -- що видно безпосередньо, що ні, скажімо; мінливість середовища і т.д. Ну і посилання  на джерела. 
+Therefore, the problem is split into global and local planning. The global planner operates on a static map to find a purely topological route % O.F. Геометрія не враховується, тільки топологія? 
+to the destination, ignoring the vehicle's kinematics and dynamic obstacles. The local planner then acts upon a small sliding window of this global route, functioning in real-time and generating motion commands that avoid immediate, dynamic or previously unobserved obstacles.
 
 \section{Spatial Representation}
 
 \subsection{Coordinate Systems}
 
-GPS sensors output data in geodetic coordinates (latitude, longitude, altitude). Trajectory planners operate in Cartesian coordinates. Geodetic coordinates must be projected onto a local tangent plane in order for local planner to calculate distances in meters.
+GPS sensors output data in geodetic coordinates (latitude, longitude, altitude). Trajectory planners operate in Cartesian coordinates. Geodetic coordinates must be projected onto a local tangent plane in order for the local planner to calculate distances in meters.
 
 \subsection{Graph-Based Map Representation}
 
+% O.F. Тут таких, принаймні -- мені неочевидних, надмірних узагальнень теж трохи є, але вже не деталізувати
 For a global planner to generate paths, it requires the environment to be abstracted into a directed semantic graph~\cite{hentschel2010osm}. Unlike grid-based maps that treat the world as a matrix of occupied or free pixels, a semantic graph represents vertices as discrete spatial coordinates (such as path intersections), and edges as traversable paths (such as pedestrian roads). Complex paths made of multiple physical segments are simplified into single edges connecting these intersections. The weight of each edge is the sum of all its original segment lengths. This preserves distance accuracy while reducing the number of vertices the planning algorithm must evaluate.
 
 % TODO: image for map -> graph
 
-The A* algorithm~\cite{hart1968astar} navigates this graph. It calculates the shortest path by minimizing the function $f(n) = g(n) + h(n)$, where $g(n)$ is the exact cost from the start vertex to vertex $n$ and $h(n)$ is the estimated heuristic cost. For A* to guarantee the mathematically shortest path, the heuristic must be admissible, meaning it must never overestimate the actual cost to the goal~\cite{russell2020ai}. Because a straight line is always the shortest possible distance between two points, the Euclidean heuristic is admissible.
+The A* algorithm~\cite{hart1968astar} navigates this graph. It calculates the shortest path by minimizing the function $f(n) = g(n) + h(n)$, where $g(n)$ is the exact cost from the start vertex to vertex $n$ and $h(n)$ is the estimated heuristic cost. For A* to guarantee the mathematically shortest path, % O.F. Майте совість -- перефразуйте :=) Математично найкоротшу - це як? 
+the heuristic must be admissible, meaning it must never overestimate the actual cost to the goal~\cite{russell2020ai}. Because a straight line is always the shortest possible distance between two points, the Euclidean heuristic is admissible. % O.F. Тут інші cost-функції не використовуються? До прикладу, типу якості поверхні -- по твердій може бути ефективніше, ніж по м'якому грунту.
 
-With the heuristic cost in place, the algorithm first processes paths closer to the goal, thus the frontier of the search stretches in an elliptical shaped, pointing at the target. This naturally reduces the number of vertices processed, while preserving accuracy. % TODO: keep or redundant?
+With the heuristic cost in place, the algorithm first processes paths closer to the goal, % O.F. В мене тут десь та ж проблема, що з "математично найкоротшою" вище...
+thus the frontier of the search stretches in an elliptical shape, pointing at the target. This naturally reduces the number of vertices processed, while preserving accuracy. % TODO: keep or redundant?
+% O.F. Може просто скажіть, що краще в напрямку цілі, еліпс тут може збивати...
 
 \section{Trajectory Optimization}
 
-The Timed Elastic Band (TEB) approach~\cite{rosmann2012teb} formulates local navigation as a multi-objective optimization problem with a receding-horizon strategy. At each control step, the algorithm predicts a short-term trajectory over a finite time window, applies the first generated control command, and then continuously re-optimizes the trajectory as new sensor data arrives. The trajectory itself is defined as a sequence of intermediate poses between the start and goal. Each pose consists of $x, y$ coordinates (in meters), $\theta$ (heading angle, in radians) and $\Delta t$ (time interval, in seconds). The trajectory is initially generated as a sequence of points, with $\Delta t$ and $\theta$ linearly interpolated.
+The Timed Elastic Band (TEB) approach~\cite{rosmann2012teb} formulates local navigation as a multi-objective optimization problem with a receding-horizon strategy. At each control step, the algorithm predicts a short-term trajectory over a finite time window, applies the first generated control command, and then continuously re-optimizes the trajectory as new sensor data arrives. The trajectory itself is defined as a sequence of intermediate poses between the start and goal. Each pose consists of $x, y$ coordinates (in meters), $\theta$ (heading angle, in radians), and $\Delta t$ (time interval, in seconds). 
+% O.F. \Delta t як частина пози?! Та ну :=) 
+The trajectory is initially generated as a sequence of points, with $\Delta t$ and $\theta$ linearly interpolated. 
 
 % TODO: image for what is trajectory
 
-The trajectory is then deformed based on constraints and obstacles. The problem is framed as a non-linear least squares problem to be optimized. The robot's poses act as the parameters. The physical and spatial constraints act as cost functions (also known as residuals). The optimization engine minimizes a weighted sum of these cost functions. In a least squares solver, the total cost is defined as $\frac{1}{2} \sum R_i^2$. Therefore, to apply a weight $w$ to a cost, the raw error is multiplied by $\sqrt{w}$, ensuring the squared residual provides the strictly weighted cost.
+The trajectory is then deformed based on constraints and obstacles. The problem is framed as a non-linear least squares problem to be optimized. The robot's poses act as the parameters. The physical and spatial constraints act as cost functions (also known as residuals). The optimization engine minimizes a weighted sum of these cost functions. In a least squares solver, the total cost is defined as $\frac{1}{2} \sum R_i^2$. % O.F. Обов'язково додати, що це за R_i! Взагалі, всі використані символи мають бути позначеними. 
+Therefore, to apply a weight $w$ to a cost,  % O.F.  І цю
+the raw error is multiplied by $\sqrt{w}$, ensuring the squared residual provides the strictly weighted cost. % O.F. strictly -- то в якому сенсі?
 
-The standard formulations of these residuals~\cite{rosmann2012teb} ensure safety, kinematic feasibility, and efficiency:
+The standard formulations of these residuals~\cite{rosmann2012teb} ensure safety, kinematic feasibility, and efficiency: % O.F. Тут явно чогось бракує, раз двокрапка? 
 
 \subsection{Obstacle Cost}
 To prevent collisions, the solver penalizes poses that fall within the safety radius of geometric primitives. For a circular obstacle, the cost calculates the shortest distance from the obstacle center $O$ to the robot line segment $AB$. $P$ is the closest point on $AB$ and is represented using $P = A + t(B - A)$. The projection scalar $t$ is clamped to $[0, 1]$ to ensure the closest point lies strictly on the segment. Let $d = \|O - P\|$:
 \begin{equation}
     R_{obs} = \begin{cases} 
-    \sqrt{w} \cdot (r_{obs} + r_{safe} - d) & \text{if } (r_{obs} + r_{safe}) > d \\ 
-    0 & \text{otherwise} 
+    \sqrt{w} \cdot (r_{obs} + r_{safe} - d) & \text{if } (r_{obs} + r_{safe}) > d, \\ 
+    0 & \text{otherwise}.
     \end{cases}
 \end{equation}
+% O.F. Розшифровка! 
 
 \subsection{Kinematic Cost}
 To enforce the differential-drive constraint, the robot's motion between two configurations is modeled as an arc segment of constant curvature~\cite{rosmann2012teb}. This requires the angle $\vartheta_{i}$ between the robot's heading and the displacement vector $\mathbf{d}_{i,i+1}$ at the start configuration to be equal to the corresponding angle $\vartheta_{i+1}$ at the final configuration. Rather than optimizing these angles directly, the constraint is formulated as a cross product:
 \begin{equation}
-    \begin{pmatrix} \cos \theta_i \\ \sin \theta_i \\ 0 \end{pmatrix} \times \mathbf{d}_{i,i+1} = \mathbf{d}_{i,i+1} \times \begin{pmatrix} \cos \theta_{i+1} \\ \sin \theta_{i+1} \\ 0 \end{pmatrix}
+    \begin{pmatrix} \cos \theta_i \\ \sin \theta_i \\ 0 \end{pmatrix} \times \mathbf{d}_{i,i+1} = \mathbf{d}_{i,i+1} \times \begin{pmatrix} \cos \theta_{i+1} \\ \sin \theta_{i+1} \\ 0 \end{pmatrix}.
 \end{equation}
 Simplified, the constraint reduces to a single scalar equation, yielding the resulting least-squares residual $R_{kin}$:
 \begin{equation}
-    R_{kin} = \sqrt{w} \cdot \Big[ (\cos\theta_i + \cos\theta_{i+1})\Delta y - (\sin\theta_i + \sin\theta_{i+1})\Delta x \Big]
+    R_{kin} = \sqrt{w} \cdot \Big[ (\cos\theta_i + \cos\theta_{i+1})\Delta y - (\sin\theta_i + \sin\theta_{i+1})\Delta x \Big].
 \end{equation}
 % TODO: image (ref the arc/heading angles)
 
 \subsection{Dynamics Costs}
-This cost imposes penalties if the physical limits of a UGV are exceeded. Using finite differences, the linear velocity cost is formulated as:
+This cost imposes penalties if the physical limits of a UGV are exceeded. Using finite differences, % O.F. Я певне чогось не розумію, але до чого тут скінчені різниці? :=) -- як з них слідує ця формула? 
+the linear velocity cost is formulated as:
 \begin{equation}
     R_{v} = \begin{cases} 
-    \sqrt{w} \cdot (|v| - v_{max}) & \text{if } |v| > v_{max} \\ 
-    0 & \text{otherwise} 
+    \sqrt{w} \cdot (|v| - v_{max}) & \text{if } |v| > v_{max}, \\ 
+    0 & \text{otherwise}. 
     \end{cases}
 \end{equation}
+% O.F. Пояснення символів! 
 Analogous formulations are applied for linear acceleration, as well as angular acceleration and velocity, ensuring angle differences are normalized to $[-\pi, \pi]$. Two poses are required to calculate the finite differences for the velocity costs. Three poses are needed for acceleration costs, as they require two consecutive velocities to calculate the change in velocity.
 
 \subsection{Time Cost}
 To prevent the solver from minimizing other penalties by outputting infinite execution times, a penalty is applied directly to the $\Delta t$ parameters. This cost forces the system to progress toward the goal:
 \begin{equation}
-    R_{t} = \sqrt{w} \cdot \Delta t
+    R_{t} = \sqrt{w} \cdot \Delta t.
 \end{equation}
+% O.F. Тут певне теж варто пояснити більше, хоча формально, всі символи на цей момент вже будуть визначені вище.
 
 \subsection{Solvers and Jacobians}
 Traditionally, the TEB algorithm models the trajectory optimization as a hyper-graph, where robot poses represent the vertices and the kinematic or spatial constraints represent the edges. However, this hyper-graph formulation is mathematically equivalent to a standard non-linear least-squares optimization problem. In a least-squares framework, the poses act as the parameter blocks, and the constraints act as the residual blocks.
 
 To solve this objective function, optimization engines require Jacobians -- matrices of partial derivatives indicating how changes in the trajectory parameters affect the total cost. These matrices are used to find the gradient of the cost functions and can be calculated analytically or numerically. Because trajectory constraints usually affect only adjacent poses, the resulting mathematical system is highly sparse. Solvers apply sparse factorization methods (such as Cholesky decomposition) to efficiently solve the equations, iteratively updating the parameters until they converge on a smooth, physically feasible trajectory.
+% O.F. Просяться тут посилання на джерела  натхнення...
 
 \subsection{Temporal Coherence}
 If an optimizer starts from a blank slate (a cold start) at every control step, it may fail to converge within strict time limits and may lead to inconsistent trajectories. MPC-style approaches, including TEB, solve this by utilizing a Warm Start~\cite{rosmann2013sparse}. Because the environment changes slightly between control frames, the optimized trajectory from the previous time step can be preserved and used as the initial guess for the next iteration. This temporal coherence reduces the number of iterations required for the solver to find a local minimum.
 
 \section{Sensor Fusion}
 
-Sensors contain noise and inherent inaccuracies. Wheel odometry accumulates drift from mechanical slippage, while IMU exhibits integration drift. Small offsets in IMU sensor bias and noise result in quadratic position error growth and orientation errors caused by gravity leakage~\cite{moore2015ekf}. Global Positioning System (GPS) sensors provide absolute global coordinates but suffer from high-frequency noise and interference under tree cover or near structures~\cite{schmidt2025vislam}.
+Sensors contain noise and inherent inaccuracies. Wheel odometry accumulates drift from mechanical slippage, while IMU exhibits integration drift. Small offsets in IMU sensor bias and noise result in quadratic position error growth and orientation errors caused by gravity leakage~\cite{moore2015ekf}. Global Positioning System (GPS) sensors provide absolute global coordinates but suffer from high-frequency noise and interference under tree cover or near structures~\cite{schmidt2025vislam}. % O.F. Ось тут може й можна вже лишити так, на прикладах, про GPS...
 
-The Kalman Filter fuses sensor streams into a single reliable state estimate~\cite{moore2015ekf}. It maintains a state vector and a covariance matrix, which represents the system's current uncertainty for each sensor. It uses IMU and wheel odometry to continuously predict the robot's next state, but with time uncertainty grows. GPS is used to correct the predicted state upon measurement and reduce uncertainty.
+% O.F. Воно б мені пасувало фільтри Калмана винести в окремий підрозді і більше про них написати -- щоб читачі розуміли, що Ви їх розумієте. 
+The Kalman Filter fuses sensor streams into a single reliable state estimate~\cite{moore2015ekf}. It maintains a state vector and a covariance matrix, which represent the system's current uncertainty for each sensor. It uses IMU and wheel odometry to continuously predict the robot's next state, but as time passes, the uncertainty grows. GPS is used to correct the predicted state upon measurement and reduce uncertainty.
 
 The standard Kalman Filter assumes linear system dynamics. However, mobile robots involve non-linear movements, such as turning and circular trajectories, which require trigonometric functions. The Extended Kalman Filter addresses this by linearizing motion and models at the current state estimate (achieved through Taylor series expansion)~\cite{moore2015ekf}.
 
@@ -116,7 +142,7 @@ This fusion also ensures that even if a sensor like GPS becomes temporarily unav
 
 \subsection{Pre-processing and Clustering}
 
-Raw LiDAR scans frequently contain isolated noise spikes and artifacts. Therefore, the points are first passed through a median filter to reject extreme outliers. The filtered point clouds are then grouped into discrete clusters using distance-based segmentation~\cite{nguyen2005lineextraction}. Points are assigned to a single sequential object if the Euclidean distance between consecutive measurements $P_i$ and $P_{i+1}$ is below a defined break distance. The vehicle diameter plus some padding can be used as an effective threshold, as narrower gaps would not be passable by the robot. % TODO: Image
+Raw LiDAR scans frequently contain isolated noise spikes and artifacts. Therefore, the points are first passed through a median filter to reject extreme outliers. The filtered point clouds are then grouped into discrete clusters using distance-based segmentation~\cite{nguyen2005lineextraction}. Points are assigned to a single sequential object if the Euclidean distance between consecutive measurements $P_i$ and $P_{i+1}$ is below a defined break distance. The vehicle diameter, with some padding, can serve as an effective threshold, as narrower gaps would not be passable by the robot. % TODO: Image
 
 \subsection{Shape Classification}
 
