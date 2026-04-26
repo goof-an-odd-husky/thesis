@@ -1,15 +1,20 @@
 % !TEX root = ../bachelor-thesis.tex
 
+% O.F. Воно певне не критично, але трохи є дублювань з попереднім розділом:
+
 \chapter{Proposed Solution}
 \section{Problem Formulation}
 
-The objective of this research is to enable an UGV to reach a target position (defined via GPS coordinates or a relative Cartesian offset) from an initial starting point entirely without human intervention. The solution presents an OSM-based hierarchical autonomous navigation system operating in a semi-structured outdoor pedestrian environment. A semi-structured environment, such as a park, provides fixed paved paths but introduces dynamic, unpredictable obstacles like pedestrians.
+The objective of this research is to enable a UGV to reach a target position (defined via GPS coordinates or a relative Cartesian offset) from an initial starting point entirely without human intervention. % O.F. Може тут м'якше сказати: without direct human control? 
+The solution presents an OSM-based hierarchical autonomous navigation system operating in a semi-structured outdoor pedestrian environment. A semi-structured environment, such as a park, provides fixed paved paths but introduces dynamic, unpredictable obstacles such as pedestrians.
 
-The core constraint of the problem is to design a resource-efficient setup using a minimal sensor suite (2D LiDAR, GPS, IMU, wheel odometry) without relying on computationally intensive and energy-demanding hardware like GPUs, 3D LiDARs, or RGB-D cameras. By combining semantic-graph-based global routing with receding-horizon local trajectory optimization, the system minimizes computational demands while maintaining reliable obstacle avoidance and spatial accuracy.
+The core constraint of the problem is to design a resource-efficient setup using a minimal sensor suite (2D LiDAR, GPS, IMU, wheel odometry) without relying on computationally intensive and energy-demanding hardware like GPUs, 3D LiDARs, or RGB-D cameras. By combining semantic-graph-based global routing with receding-horizon local trajectory optimization, the system minimizes computational demands while maintaining reliable obstacle avoidance and spatial accuracy. 
 
 \section{Hardware and Environment Setup}
 
 The experimental subject of this research is the Clearpath Husky A200~\cite{clearpath_husky}, a medium-sized UGV. The Husky is a rugged, four-wheeled skid-steer platform designed for research applications. It has a physical footprint of $99 \times 67 \times 39 \text{ cm}$, weighing approximately $50 \text{ kg}$.
+
+% O.F. Додайте фото Хаскі :=) Можна в міру кумедне, але без людей зверху
 
 The UGV is equipped with a minimal sensor suite, which includes:
 \begin{itemize}
@@ -18,6 +23,7 @@ The UGV is equipped with a minimal sensor suite, which includes:
     \item 2D LiDAR: % TODO: specify the model
     \item GPS Receiver: % TODO: specify the model
     \item Compute Unit: ROS2 Jazzy~\cite{macenski2022ros2} % TODO: specify the models
+    % O.F. Compute Unit сприймається швидше як хард, не як софт. Чи так кажуть? 
 \end{itemize}
 
 The proposed system was designed for Stryiskyi Park, Lviv, Ukraine. The environment is semi-structured, featuring mapped, paved pedestrian paths but lacking traffic rules or lane markings. While the park's topography includes both flat and hilly regions, this work is built for predominantly flat sections, as navigation on hilly terrains using only 2D sensors poses additional challenges in ground removal and obstacle filtering~\cite{kim2020hilly}. This environment poses several challenges:
@@ -47,11 +53,11 @@ OSM is used for a semantic map. To process this data, the Python \texttt{osmnx} 
 
 After initial filtering, the global path can be generated. The A* algorithm is used to get a sequence of vertices that need to be followed in order.
 
-The local planner does not operate on a graph, instead it works in a Cartesian coordinate system. Therefore, the vertices sequence has to be converted into a sequence of 2D points connected by straight lines. Because physical footpaths are rarely perfectly straight, single edges in the graph are often represented in OSM as a sequence of smaller linear segments (stored within the \texttt{geometry} attribute). By splitting each edge into these underlying segments, the global planner outputs a sequence of 2D Cartesian waypoints suitable for the local planner.
+The local planner does not operate on a graph; instead, it works in a Cartesian coordinate system. Therefore, the vertices sequence has to be converted into a sequence of 2D points connected by straight lines. Because physical footpaths are rarely perfectly straight, single edges in the graph are often represented in OSM as a sequence of smaller linear segments (stored within the \texttt{geometry} attribute). By splitting each edge into these underlying segments, the global planner outputs a sequence of 2D Cartesian waypoints suitable for the local planner.
 
 \subsection{Obstacle Abstraction}
 
-The local trajectory planner requires distinct geometric constraints rather than a dense point cloud. To achieve this, a custom perception pipeline is implemented to process 2D LiDAR scans into Cartesian geometric primitives based on the theoretical models described in Chapter 2.
+The local trajectory planner requires distinct geometric constraints rather than a dense point cloud. To achieve this, a custom perception pipeline is implemented to process 2D LiDAR scans into Cartesian geometric primitives based on the theoretical models described in Chapter 2. % O.F. Радику, серйозно?! Замініть на ref. 
 
 \subsubsection{Pre-processing and Clustering}
 Raw LiDAR scans are converted from polar to Cartesian coordinates. Points below a minimum range (rays reflected from the vehicle itself) are discarded. The scan is passed through a 1D median filter of size $N$ to reject isolated noise. The points are then grouped sequentially, broken based on the break distance (the vehicle width plus a safety margin).
@@ -60,18 +66,18 @@ Raw LiDAR scans are converted from polar to Cartesian coordinates. Points below 
 Clusters with fewer than three points are automatically classified as circles. For larger clusters, if the maximum internal Euclidean distance exceeds the geometry split threshold, it is considered a line. For the remaining clusters, the Xavier heuristic~\cite{xavier2005circledetection} is applied. The arc depth is calculated, and if it falls between 10\% and 70\% of the chord length, the cluster is classified as a circle; otherwise, it is treated as a line.
 
 \subsubsection{Primitives Extraction}
-To ensure stability against sensor noise and bias introduced with algebraic curvature methods of circle extractino, a spatial heuristic is used. The maximum Euclidean distance between any two points in the cluster (the chord width) establishes an initial diameter estimate. To counteract sensor noise and the systematic cylinder overestimation identified by Forsman et al.~\cite{forsman2017bias}, the radius (half diameter) is clamped between predefined physical minimum and maximum bounds. Instead of calculating a mathematical center from the arc, the visible middle point of the cluster is projected outward from the sensor origin by the estimated radius to approximate the true geometric centroid. Finally, the radius is expanded, so that all points in the cluster are enclosed. This method mitigates overestimations while implicitly providing a safety margin. % TODO: Add image
+To ensure stability against sensor noise and bias introduced with algebraic curvature methods of circle extraction, a spatial heuristic is used. The maximum Euclidean distance between any two points in the cluster (the chord width) establishes an initial diameter estimate. To counteract sensor noise and the systematic cylinder overestimation identified by Forsman et al.~\cite{forsman2017bias}, the radius (half diameter) is clamped between predefined physical minimum and maximum bounds. Instead of calculating a mathematical center from the arc, the visible middle point of the cluster is projected outward from the sensor origin by the estimated radius to approximate the true geometric centroid. Finally, the radius is expanded, so that all points in the cluster are enclosed. This method mitigates overestimations while implicitly providing a safety margin. % TODO: Add image
 Clusters classified as lines are processed using the recursive Split-and-Merge algorithm to yield distinct linear segments.
 
 \subsubsection{Virtual Boundaries}
-To restrict the UGV to the pedestrian path, virtual line obstacles are generated. While path width can be extracted from OSM tags, in practice these tags are often unmapped. Instead, the implementation uses a default value of 4 meters. Parallel line barriers are placed on both sides of the target trajectory, creating a safe routing corridor for the local planner.
+To restrict the UGV to the pedestrian path, virtual line obstacles are generated. While path width can be extracted from OSM tags, in practice, these tags are often unmapped. Instead, the implementation uses a default value of 4 meters. Parallel line barriers are placed on both sides of the target trajectory, creating a safe routing corridor for the local planner.
 
 \subsection{Localization and State Estimation}
 
 An Extended Kalman Filter (EKF) is implemented via the \texttt{robot\_localization} ROS2 package.
-The EKF is configured to fuse data from the internal IMU and wheel encoders for continuous state estimation. It is used for the trajectory updates, so as not to introduce sudden shifts for TEB local planner.
+The EKF is configured to fuse data from the internal IMU and wheel encoders for continuous state estimation. It is used for the trajectory updates, so as not to introduce sudden shifts for the TEB local planner.
 
-Another EKF is used to take into account low-frequency GPS data. It is projected onto a local Cartesian tangent plane and fused to reduce the drift. This second filter's output is used to update the direction toward the target, so that the vehicle finishes movement at the exact destination.
+Another EKF is used to take into account low-frequency GPS data. It is projected onto a local Cartesian tangent plane and fused to reduce the drift. This second filter's output is used to update the direction toward the target, ensuring the vehicle reaches the exact destination.
 
 % TODO: diagram, of how these relate (one filter uses another)
 
@@ -82,7 +88,7 @@ In fallback scenarios where GPS is disabled or unavailable, the direction to the
 A custom Python implementation of the Timed Elastic Band (TEB) algorithm was developed, utilizing the \texttt{pyceres} library~\cite{sarlin2025pyceres} for non-linear optimization. \texttt{pyceres} provides minimal Python bindings that expose the core functionality of the highly optimized C++ Ceres Solver~\cite{agarwal2012ceres}, allowing the high-level logic to be orchestrated in Python while maintaining near-native execution speeds.
 
 \subsubsection{Local Goal Selection and State Representation}
-Because optimizing a trajectory all the way to the final destination is infeasible to compute in real time, the TEB planner operates on a sliding window. At each control loop, the UGV's current position is projected onto the global path (the closest waypoint to the current position is selected). The algorithm traverses the path forward until an accumulated length is equal to the predefined lookahead distance. This coordinate becomes the temporary local goal for the optimizer. If the local goal falls inside or too close to an obstacle, it is slided along the global path until a free space is found.
+Because optimizing a trajectory all the way to the final destination is infeasible to compute in real time, the TEB planner operates on a sliding window. At each control loop, the UGV's current position is projected onto the global path (the closest waypoint to the current position is selected). The algorithm traverses the path forward until an accumulated length is equal to the predefined lookahead distance. This coordinate becomes the temporary local goal for the optimizer. If the local goal falls inside or too close to an obstacle, it is slid along the global path until a free space is found.
 
 To ensure the solver remains stable, the trajectory resolution is dynamically resized between iterations. The distances between consecutive poses are calculated. If a distance is lower than a lower bound, the pose is pruned, and the $\Delta t$ of the previous one is increased by the $\Delta t$ of the current one. If the distance is larger than the upper bound, a new pose gets inserted in the middle of the other two, and the $\Delta t$ is halved and spread across the inserted pose and the first of the two old ones.
 
@@ -93,12 +99,12 @@ While standard kinematic, dynamic, time, and circular obstacle costs (as defined
 
 Calculating the exact shortest distance between two line segments introduces non-differentiable edge cases. To solve this and maintain smooth Jacobians for the Ceres solver, a custom residual was derived. The minimum distance from the trajectory segment (endpoints $A, B$) to the obstacle segment (endpoints $C, D$) is approximated using a LogSumExp (Softmin) function~\cite{boyd_vandenberghe_2004} over the four endpoint-to-segment distances ($d_A \dots d_D$):
 \begin{equation}
-	d_{min} = -\frac{1}{\alpha} \ln \left( \sum_{k=1}^4 \exp(-\alpha \cdot d_k) \right)
+	d_{min} = -\frac{1}{\alpha} \ln \left( \sum_{k=1}^4 \exp(-\alpha \cdot d_k) \right),
 \end{equation}
 \begin{equation}
 	R_{line} = \begin{cases}
-		\sqrt{w} \cdot (r_{safe} - d_{min}) & \text{if } r_{safe} > d_{min} \\
-		0                                   & \text{otherwise}
+		\sqrt{w} \cdot (r_{safe} - d_{min}) & \text{if } r_{safe} > d_{min}, \\
+		0                                   & \text{otherwise}.
 	\end{cases}
 \end{equation}
 % TODO: mb image
@@ -116,7 +122,8 @@ While \texttt{g2o} uses predefined graph edges, Ceres allows for the manual defi
 
 To ensure the optimization can run in real-time, an obstacle filter is applied before constructing the Ceres problem. Rather than evaluating every obstacle against every pose, the system pre-calculates distances and only adds residual blocks to the solver for obstacles posing an immediate collision threat to specific segments. All obstacle parameters are pre-extracted into arrays upon initialization, allowing for vectorized operations instead of slow iterative loops.
 
-The problem is solved using the Sparse Normal Cholesky linear solver via \texttt{pyceres}. Due to Python limitations, specifically the Global Interpreter Lock (GIL)~\cite{van2009python3}, performance drops when increasing the number of threads, so the optimization is strictly restricted to a single thread. To maintain a predictable control rate, the solver is capped at a strict maximum number of iterations. The Sparse Normal Cholesky solver was selected because the TEB optimization problem produces a highly sparse Jacobian matrix, which this decomposition solves efficiently, as also demonstrated in the original TEB formulation~\cite{rosmann2013sparse}.
+The problem is solved using the Sparse Normal Cholesky linear solver via \texttt{pyceres}. Due to Python limitations, specifically the Global Interpreter Lock (GIL)~\cite{van2009python3}, performance drops when increasing the number of threads, so the optimization is strictly restricted to a single thread. % O.F. Тут може варто переформулювати трохи -- слово optimization трішки може збивати
+To maintain a predictable control rate, the solver is capped at a strict maximum number of iterations. The Sparse Normal Cholesky solver was selected because the TEB optimization problem produces a highly sparse Jacobian matrix, which this decomposition solves efficiently, as also demonstrated in the original TEB formulation~\cite{rosmann2013sparse}.
 
 \subsubsection{Latency Compensation}
 The implementation uses a warm start approach to maintain temporal coherence. However, because non-linear optimization introduces computational latency, the UGV physically moves while the solver runs. If the trajectory state was preserved blindly, the initial poses would be outdated by the time the next frame begins.
@@ -132,7 +139,7 @@ To ensure the autonomous system operates safely and reliably, the algorithmic pa
     \item \textit{Safety and Critical Radii.} The system uses a dual-boundary approach. The ``safety radius'' is set to $1.3\text{ m}$, establishing a soft buffer slightly larger than the UGV's length. The optimizer penalizes trajectories entering this zone. Additionally, a ``critical stop radius'' is defined at $0.5\text{ m}$. If any obstacle breaches this distance, an immediate emergency stop is triggered.
     \item \textit{Cluster Break Distance.} Set to $1.4\text{ m}$, which is roughly 1.5 times the physical width of the robot. If the gap between two sequential LiDAR points is smaller than this threshold, the UGV would physically struggle to navigate through it. Therefore, the clustering algorithm treats the gap as unpassable and merges the points into a single solid obstacle.
     \item \textit{LiDAR Filtering.} A ``min scan range'' of $0.33\text{ m}$ is enforced to filter out laser rays reflecting off the Husky's own chassis. Additionally, a 1D median filter of size $3$ is applied to the raw scans. This eliminates isolated single-ray noise (e.g., sensor artifacts or flying debris) without overly smoothing out genuine narrow obstacles.
-    \item \textit{Virtual Barriers.} To prevent the local planner from navigating off the pavement into unstructured terrain, a ``barrier offset'' of $2.0\text{ m}$ is applied. Empirically, pedestrian paths in the targeted park environment have the minimum width of roughly 4 meters. Applying a 2-meter virtual line obstacle to both the left and right of the global path's center confines the trajectory to the pavement.
+    \item \textit{Virtual Barriers.} To prevent the local planner from navigating off the pavement into unstructured terrain, a ``barrier offset'' of $2.0\text{ m}$ is applied. Empirically, pedestrian paths in the targeted park environment have a minimum width of roughly 4 meters. Applying a 2-meter virtual line obstacle to both the left and right of the global path's center confines the trajectory to the pavement.
 \end{itemize}
 
 \subsubsection{Kinodynamic Limits}
@@ -150,7 +157,7 @@ To ensure the autonomous system operates safely and reliably, the algorithmic pa
 \subsection{Safety Mechanisms}
 \label{subsec:safety-mechanisms}
 
-Because the system relies on a minimal sensor suite, it inherently possesses perceptual blind spots -- most notably the lack of vertical vision due to the 2D LiDAR. To ensure safe operation of a heavy UGV in a public environment, a hierarchy of safety nets was implemented. If any of the following conditions are met, the system overrides the local planner and triggers an immediate software-level emergency stop (E-Stop), halting all movement.
+Because the system relies on a minimal sensor suite, it inherently possesses perceptual blind spots -- most notably the lack of vertical vision due to the 2D LiDAR. To ensure the safe operation of a heavy UGV in a public environment, a hierarchy of safety nets was implemented. If any of the following conditions are met, the system overrides the local planner and triggers an immediate software-level emergency stop (E-Stop), halting all movement.
 
 \subsubsection{Terrain Anomalies}
 
@@ -170,11 +177,11 @@ The TEB optimizer may occasionally fail to converge on a safe path within the ti
 
 \subsubsection{Path Deviation}
 
-If the UGV is forced to dodge multiple obstacles and its position deviates more than $X\text{ m}$ (virtual corridor + padding, meaning that other safety features such as curb detection did not activate), from the global A* route, it is considered lost.
+If the UGV is forced to dodge multiple obstacles and its position deviates more than $X\text{ m}$ (virtual corridor + padding, meaning that other safety features such as curb detection did not activate) from the global A* route, it is considered lost.
 
 \subsubsection{Localization Jumps}
 
-While GPS may produce high-frequency errors, IMU and wheel odometry do not. If a jump in the latter is noticed (significantly larger than the vehicles maximum velocity), the system halts to wait for the localization to stabilize.
+While GPS may produce high-frequency errors, IMU and wheel odometry do not. If a jump in the latter is noticed (significantly larger than the vehicle's maximum velocity), the system halts to wait for the localization to stabilize.
 
 \subsubsection{Motion Stall}
 
@@ -186,11 +193,11 @@ The UGV operates autonomously but must remain under the ultimate supervision of 
 
 \section{Ethical and Safety Considerations}
 
-Deploying a $50\text{ kg}$ autonomous vehicle in a public space involves inherent safety risks. The primary ethical consideration is to ensure that the UGV does not pose a physical threat to pedestrians, pets, or property. As discussed, the system is limited in its perception due to its minimal sensor suite. To mitigate the risk, the system design prioritizes safety over navigational efficiency. This is reflected in the strict velocity caps, the critical stop radius, and the extensive software-level safety mechanisms described in~\ref{subsec:safety-mechanisms}. Quantitative benchmarking involving human-like dynamic agents is only conducted in simulation to eliminate physical risk.
-
+Deploying a $50\text{ kg}$ autonomous vehicle in a public space involves inherent safety risks. The primary ethical consideration is to ensure that the UGV does not pose a physical threat to pedestrians, pets, or property. As discussed, the system is limited in its perception due to its minimal sensor suite. To mitigate the risk, the system design prioritizes safety over navigational efficiency. This is reflected in the strict velocity caps, the critical stop radius, and the extensive software-level safety mechanisms described in~\ref{subsec:safety-mechanisms}. Quantitative benchmarking involving human-like dynamic agents is only conducted in simulation to eliminate physical risk. 
+ 
 \section{Experimental Methodology}
 
-To evaluate the performance and resource efficiency of the proposed lightweight navigation architecture, a series of controlled quantitative experiments were conducted. While the system is designed for and qualitatively tested on physical hardware, the primary comparative benchmarking was executed within a simulation environment. Simulation allows for exact reproducibility, precise dynamic obstacle scripting, and isolated performance profiling without the physical constraints of battery degradation or unmeasured environmental hazards.
+To evaluate the performance and resource efficiency of the proposed lightweight navigation architecture, a series of controlled quantitative experiments was conducted. While the system is designed for and qualitatively tested on physical hardware, the primary comparative benchmarking was executed within a simulation environment. Simulation allows for exact reproducibility, precise dynamic obstacle scripting, and isolated performance profiling without the physical constraints of battery degradation or unmeasured environmental hazards.
 
 \subsection{Simulation Environment Setup}
 
@@ -237,9 +244,8 @@ Quantitative data was collected over $N=30$ independent simulated runs for each 
 \subsubsection{Resource Efficiency Metrics}
 
 Because the work prioritizes computational accessibility, resource consumption is an important benchmark. Both the average values (mean) and the consistency (standard deviation, 5th percentile lows) were evaluated. During the simulation runs, system telemetry was logged at 1 Hz intervals to measure:
-
 \begin{itemize}
-    \item CPU Utilization (\%)
-    \item Memory Footprint (MB)
+    \item CPU Utilization (\%).
+    \item Memory Footprint (MB).
     \item Control frame frequency (Hz): The number of control commands generated and sent by the algorithm per second.
 \end{itemize}
