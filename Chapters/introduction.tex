@@ -1,8 +1,10 @@
 % !TEX root = ../bachelor-thesis.tex
 
 \chapter{Introduction}
+\label{chap:introduction}
 
 \section{Background and Motivation}
+\label{sec:background-motivation}
 
 Mobile robotic systems are an important field, especially for tasks that are monotonous, remote, or located in hazardous environments. Manual control of such robots is often infeasible due to the sheer number of systems and the volume of their tasks. Furthermore, physical barriers such as distance or signal interference can cause the remote control to fail. Therefore, autonomous systems are necessary to independently determine paths and navigate toward target locations.
 
@@ -19,6 +21,7 @@ Together, these lightweight components provide all the necessary data for a robo
 The setup includes a differential-drive ground robot in an outdoor park. Pedestrian paths provide a semi-structured, topologically known environment. Unlike road networks, pedestrian zones lack strict traffic rules or lane changes, significantly reducing the need for heavy semantic computer vision processing. However, unlike completely unstructured off-road environments~\cite{min2026offroad}, these paths have clear geometric boundaries that can be modelled and tracked. The system's objective is to navigate autonomously from a start point to a target point without human intervention.
 
 \section{Objectives}
+\label{sec:objectives}
 
 The primary objective of this thesis is to design, implement, and evaluate a resource-efficient autonomous navigation system for a UGV in semi-structured outdoor environments. Specifically, the research addresses the following goals:
 
@@ -31,15 +34,16 @@ The primary objective of this thesis is to design, implement, and evaluate a res
 The system was validated in a simulated environment, with performance evaluated based on success rate, safety margins, and travel time.
 
 \section{Structure Of The Thesis}
+\label{sec:structure}
 
 The remainder of this thesis is structured as follows:
 
 \begin{itemize}
 % TODO: make these links to chapters?
-\item \textbf{Chapter 2 (Related Work)} surveys existing approaches to path planning, localization, semantic mapping, and obstacle abstraction, highlighting the gap in lightweight solutions for outdoor navigation.
-\item \textbf{Chapter 3 (Theoretical Background)} details the underlying concepts, including sensor characteristics, robot kinematics, hierarchical navigation, trajectory optimization, sensor fusion, and geometric feature extraction.
-\item \textbf{Chapter 4 (Proposed Solution)} describes the hardware setup, system architecture, software implementation (including OSM processing, LiDAR abstraction, EKF localization, and custom TEB optimizer), safety mechanisms, and ethical considerations.
-\item \textbf{Chapter 5 (Experiments)} % TODO
-\item \textbf{Chapter 6 (Conclusion)} % TODO
+\item \textbf{Chapter~\ref{chap:related-work} (Related Work)} surveys existing approaches to path planning, localization, semantic mapping, and obstacle abstraction, highlighting the gap in lightweight solutions for outdoor navigation.
+\item \textbf{Chapter~\ref{chap:theoretical-background} (Theoretical Background)} details the underlying concepts, including sensor characteristics, robot kinematics, hierarchical navigation, trajectory optimization, sensor fusion, and geometric feature extraction.
+\item \textbf{Chapter~\ref{chap:proposed-solution} (Proposed Solution)} describes the hardware setup, system architecture, software implementation (including OSM processing, LiDAR abstraction, EKF localization, and custom TEB optimizer), safety mechanisms, and ethical considerations.
+\item \textbf{Chapter~\ref{chap:experiments} (Experiments)} % TODO
+\item \textbf{Chapter~\ref{chap:conclusion} (Conclusion)} % TODO
 \end{itemize}
 

@@ -1,77 +1,71 @@
 % !TEX root = ../bachelor-thesis.tex
 
 \chapter{Related Work}
+\label{chap:related-work}
 
-% O.F. То до обговорення, але мені тут бракує якогось вступу -- кілька речень про загальну структуру, з посиланнями на відповідні оглядові роботи, з якого б вже слідували наступні підрозділи тексту.
+Autonomous outdoor navigation is usually treated as a pipeline rather than a single algorithm. Surveys of mobile robot navigation and path planning distinguish perception, localization, mapping or spatial representation, global path planning, local motion planning, and low-level control as closely related subproblems~\cite{pandey2017review,karur2021survey}. Building upon these, this chapter focuses on the components most relevant to the proposed lightweight architecture. Section~\ref{sec:rw-path-planning} reviews path and trajectory planning approaches, Section~\ref{sec:rw-localization} surveys localization techniques and the trade-offs between different sensing modalities, Section~\ref{sec:rw-semantic-mapping} discusses semantic mapping as an alternative to building maps from scratch, and Section~\ref{sec:rw-obstacle-abstraction} addresses the abstraction of raw sensor data into compact obstacle representations suitable for resource-constrained planners.
 
 \section{Path and Trajectory Planning}
+\label{sec:rw-path-planning}
 
-The problem of autonomous navigation is classically divided into:
+The problem of autonomous navigation is often decomposed into several layers: route search, path smoothing, local trajectory generation, trajectory tracking, and recovery behaviors. Since this thesis does not address high-level behavioral planning or traffic-rule reasoning, the discussion focuses on the two layers most relevant to the proposed system:
 \begin{itemize}
-	\item Global path planning.
-	\item Local trajectory planning and obstacle avoidance.
-\end{itemize}
-% O.F. Я не фахівець, але здається тут таки більше пунктів виділяють... Якщо так, варто їх згадати, навіть якщо далі не обговорюватимете -- так і сказавши. Якщо ні -- просто викиньте цей комент.
+    \item Global path planning.
+    \item Local trajectory planning and obstacle avoidance.
+\end{itemize} 
+Higher-level mission planning is outside the scope of this work and is not discussed further.
 
-Research has explored both fields, developing various algorithms to handle different environmental constraints and vehicle kinematics~\cite{pandey2017review}.
+Research has explored both layers extensively, developing algorithms to handle different environmental constraints and vehicle kinematics. Surveys, such as those by Pandey et al.~\cite{pandey2017review} and Karur et al.~\cite{karur2021survey}, categorize these approaches based on environmental assumptions (static vs. dynamic maps) and vehicle models (holonomic vs. non-holonomic), highlighting trade-offs between completeness, optimality, and real-time feasibility.
 
-For global planning, graph-based approaches like A* are commonly used because they are reliable and optimal on static maps~\cite{karur2021survey}.
+For global planning, graph-based approaches like Dijkstra's algorithm and A* are commonly used because they are reliable and optimal on static maps under an admissible heuristic~\cite{karur2021survey}. When the environment is partially unknown or dynamically changing, incremental search algorithms such as D* and D* Lite allow efficient path repair by updating only affected segments rather than recomputing the entire route. For high-dimensional configuration spaces or complex non-holonomic constraints, sampling-based algorithms like Rapidly-exploring Random Trees (RRT) and Probabilistic Roadmaps (PRM)~\cite{lavalle2006planning} probabilistically explore the space without requiring full discretization, though they often require post-processing for path smoothness.
+
+Some works focus on meta-heuristic and bio-inspired optimization techniques, including Genetic Algorithms (GA), Ant Colony Optimization (ACO), and Firefly algorithms~\cite{karur2021survey}. While these methods are adaptable and can escape local minima in complex search spaces, they often suffer from slow or premature convergence, making them computationally unpredictable and generally less suitable for strict real-time control on constrained hardware. Therefore, when the environment is already explicitly modeled as a sparse semantic OpenStreetMap graph, classic deterministic A* search remains the most direct, complete, and computationally lightweight choice for global routing.
 
 However, navigating dynamic environments requires real-time local planning. Early methods, such as Artificial Potential Fields (APF)~\cite{khatib1986potential}, modeled the environment as a physical field where the goal attracts and obstacles repel the robot. This approach often suffered from local minima and struggled with narrow gaps. Later, the Vector Field Histogram (VFH)~\cite{borenstein1989vfh} offered a simpler alternative with better performance, though it struggled with complex paths and kinematic constraints. Other approaches focused on dynamic environments by using collision cones to predict intersections between moving objects~\cite{chakravarthy2002collision}.
 
-A widely used approach is the Dynamic Window Approach (DWA)~\cite{fox1997dwa}. It evaluates a set of feasible velocities for the next few seconds
-% O.F. Знову ж, я не фахівець і не маю зараз можливості зануритися глибше, але оце few seconds мене напрягає...
-and chooses the best one based on goal proximity and obstacle avoidance. While DWA addresses vehicle kinematics and produces smooth motion, it struggles to generate paths in highly complex environments. As a result, it is included in the ROS Nav2 stack primarily as a simple baseline planner~\cite{nav2_docs}.
-% O.F. Те ж застереження, але не бачу там згадок DWA
+A widely used reactive approach is the Dynamic Window Approach (DWA)~\cite{fox1997dwa}. It evaluates a set of feasible velocities admissible within a short prediction horizon (typically a fraction of a second up to roughly one second, defined by the robot's deceleration limits) and chooses the best one based on goal proximity and obstacle avoidance. While DWA addresses vehicle kinematics and produces smooth motion, it struggles to generate paths in highly complex environments, since each decision is based only on the immediate velocity window rather than a longer-horizon trajectory. In the ROS Nav2 stack, DWA is available through the DWB controller, which retains the core ideas of DWA while exposing them as configurable critic functions~\cite{nav2_docs}.
 
 The Elastic Band approach~\cite{quinlan1993elastic} models the global path as a deformable band that stretches around newly detected obstacles. However, it only provides a geometric path rather than a complete trajectory, meaning it does not calculate the specific speeds required to drive the route.
 
-The Timed Elastic Band (TEB) algorithm~\cite{rosmann2012teb} extends this idea using a Model Predictive Control (MPC) approach. Unlike purely reactive methods, MPC-style algorithms predict and optimize the trajectory over a future time window while enforcing the vehicle's physical limits (kinodynamic constraints). TEB optimizes this trajectory to balance execution time and safe distance from obstacles. More recently, sampling-based MPC algorithms, such as Model Predictive Path Integral Control (MPPI), have been introduced for aggressive driving~\cite{williams2016mppi}. Due to its performance, Nav2 recently replaced TEB with MPPI as its advanced trajectory planner.
+The Timed Elastic Band (TEB) algorithm~\cite{rosmann2012teb} extends this idea using a Model Predictive Control (MPC) approach. Unlike purely reactive methods, MPC-style algorithms predict and optimize the trajectory over a future time window while enforcing the vehicle's physical limits (kinodynamic constraints). TEB optimizes this trajectory to balance execution time and safe distance from obstacles. More recently, sampling-based MPC algorithms, such as Model Predictive Path Integral Control (MPPI), have been introduced for aggressive driving~\cite{williams2016mppi}. Due to its performance, Nav2 has adopted MPPI as one of its advanced trajectory controllers alongside the DWB-based planners.
 
 While MPC methods generate better trajectories than reactive methods like DWA,
 %~\ref{TODO: image of difference between DWA (multitude of small arrows, one of which is main) and MPC (the whole trajectory ahead plus an arrow)}
 they require more computational power. MPPI, in particular, requires parallel sampling that often necessitates a GPU, making it unsuitable for constrained hardware. Therefore, a CPU-optimized approach like TEB~\cite{rosmann2013sparse} provides a good balance between navigational performance and computational efficiency.
 
-% O.F. До обговорення: наскільки цей огляд "щільний" -- повний та згадує основні підходи, або популярні, або обговорювані в літературі активно? 
-
 \section{Localization}
+\label{sec:rw-localization}
 
-Accurate navigation requires reliable spatial localization. Currently, methods like Visual-Inertial SLAM (VI-SLAM) and 3D LiDAR-based SLAM are widely used. However, these methods are computationally heavy. For example, Schmidt et al.~\cite{schmidt2025vislam} showed that VI-SLAM algorithms can consume 4-6 GB of RAM, and their accuracy can degrade significantly when the frame rate is reduced to save processing power. Additionally, outdoor environments like parks often cause SLAM algorithms to drift or lose tracking entirely due to moving foliage and a lack of clear structural features.
+Accurate navigation requires reliable spatial localization. Currently, high-performance methods like Visual-Inertial SLAM (VI-SLAM) and 3D LiDAR-based SLAM are widely used for simultaneous localization and mapping. However, these methods are computationally heavy. For example, Schmidt et al.~\cite{schmidt2025vislam} showed that VI-SLAM algorithms can consume 4-6~GB of RAM, and their accuracy can degrade significantly when the frame rate is reduced to save processing power. Additionally, outdoor environments like parks often cause SLAM algorithms to drift or lose tracking entirely due to moving foliage and a lack of clear structural features.
 
-Because of these limitations, using an Extended Kalman Filter (EKF) to fuse GPS, Inertial Measurement Units (IMU), and wheel odometry serves as a possible alternative. 
-% O.F. Замінив stable на possible -- боюся я таких сильних фраз :=) Але якщо є докази-джерела, то можна повернути 
-% Крім того, може речення вище варто переформулювати стартуючи з методів, потім EKF -- починаючи з власне джерел інформації про положення
-Moore and Stouch~\cite{moore2015ekf} showed that while wheel odometry drifts over time, fusing it with IMU data improves accuracy. Adding GPS, even if the signal is interfered by trees or other obstracles, further reduces long-term drift. This provides reliable localization without the heavy overhead of SLAM.
+To avoid the computational overhead of full SLAM, several lightweight localization paradigms have been explored. Infrastructure-free approaches, such as 2D LiDAR scan matching against a pre-built occupancy grid (e.g., Adaptive Monte Carlo Localization)~\cite{thrun2005probabilistic}, are computationally efficient. However, they often degrade in semi-structured outdoor environments where repetitive paths and dynamic vegetation undermine scan registration. Radio-based methods provide an alternative family of solutions: Ultra-Wideband (UWB) and Bluetooth Low Energy (BLE) have been widely adopted for indoor positioning and fingerprinting~\cite{stefanoni2025survey}. Building on these signals, Dyhdalovych et al.~\cite{dyhdalovych2025ble} demonstrated a particle-filter fusion of BLE and IMU data that reduces indoor localization errors by up to 25\,\%.
 
-% O.F. Ви ж говорите про 2D LiDAR та ті ж наші з Інфінеоном UWB (неопубліковано поки) та BLE: https://scholar.google.com/citations?view_op=view_citation&hl=uk&user=4MZRnekAAAAJ&citation_for_view=4MZRnekAAAAJ:hFOr9nPyWt4C 
-% Підозрюю, ще щось може бути -- фінгерпрінтіг якийсь абощо. Згадайте їх. 
-% Щодо GPS, вартує більше подробиць про метод, його обмеження і джерела проблем
+While effective in their target domains, these alternatives have strict environment requirements. Radio-based methods need pre-installed anchors, beacons, or extensive site surveys, while LiDAR-only approaches assume a prior scanned map of the location. Both assumptions conflict with the goal of deploying a system in a public park without any environment-specific setup.
+
+Consequently, relying on the Global Positioning System (GPS) remains the standard for outdoor navigation. Because low-cost GPS suffers from low update rates, signal obstruction, and multipath reflections under tree canopies, relying on it alone is insufficient. Therefore, fusing GPS with an Inertial Measurement Unit (IMU) and wheel odometry through an Extended Kalman Filter (EKF) serves as a highly practical alternative. Moore and Stouch~\cite{moore2015ekf} showed that while wheel odometry drifts over time, fusing it with IMU data improves short-term accuracy, and adding GPS further reduces long-term drift. This provides reliable, infrastructure-free localization without the heavy overhead of SLAM.
 
 \section{Semantic Mapping}
+\label{sec:rw-semantic-mapping}
 
 SLAM is not only intended for localization but also for mapping. To further avoid the computational costs of SLAM, researchers have explored using existing semantic maps for global planning. Min et al.~\cite{min2026offroad} note a growing trend of reducing SLAM dependency by navigating via pre-existing semantic data. Other studies highlight that explicit grid maps may not even be necessary, as internal visual odometry can sometimes provide high accuracy on its own~\cite{partsey2022mapping}.
 
 OpenStreetMap (OSM) is a crowdsourced geographic database with tags describing road types, surface materials, and geometry. Hentschel and Wagner~\cite{hentschel2010osm} showed that autonomous navigation can be successfully performed using OSM geodata. A distinct benefit of OSM over SLAM is its semantic context: it distinguishes footpaths from grass and provides surface details rather than just labeling space as free or occupied. Furthermore, Stahr et al.~\cite{stahr2023osm} use OSM attributes like path width to create boundaries for local planners, which can be used to limit the search space for trajectory optimization algorithms.
 
 \section{Obstacle Abstraction}
+\label{sec:rw-obstacle-abstraction}
 
-Even with a lightweight map, 
-% O.F. Може я чогось не розумію, але виникло запитання, lightweight map -- це як? 
-processing raw sensor data for immediate obstacle avoidance remains resource-intensive. A 3D LiDAR produces a massive number of points and introduces the problem of filtering out the ground so the road itself is not treated as an obstacle~\cite{cellina2025lidar}. This makes 3D LiDAR computationally expensive.
+Even when global routing relies on a compact semantic map rather than a dense occupancy grid, processing raw sensor data for immediate obstacle avoidance remains resource-intensive. A 3D LiDAR produces a massive number of points and introduces the problem of filtering out the ground so the road itself is not treated as an obstacle~\cite{cellina2025lidar}. This makes 3D LiDAR computationally expensive.
 
-Using a 2D LiDAR solves the vertical complexity 
-% O.F. Я підозрюю, знаю про яку vertical complexity, але може варто пояснити? Чи це усталений термін? 
-but still produces hundreds of points per scan. While simpler ultrasonic sensors exist, they struggle with angled surfaces and lack precise direction~\cite{borenstein1988ultrasonic}. To optimize 2D LiDAR processing, point clouds are often abstracted into geometric primitives. Catapang and Ramos~\cite{catapang2016lidar} and Nguyen et al.~\cite{nguyen2005lineextraction} grouped points within a specific distance into clusters. To extract shapes, Sezer and Gokasan~\cite{sezer2012follow} used circle approximations. For line extraction, Nguyen et al.~\cite{nguyen2005lineextraction} found that the ``Split and Merge'' algorithm is the most efficient method for converting raw LiDAR points into lines, while still being very accurate. 
-% O.F. Автори так категорично і формулюють? Якщо ні -- варто пом'якшити і тут :=) 
+Using a 2D LiDAR removes the need to reason about the vertical structure of the scene -- since all measurements lie in a single horizontal plane, ground filtering and full 3D segmentation are no longer required -- but still produces hundreds of points per scan. While simpler ultrasonic sensors exist, they struggle with angled surfaces and lack precise direction~\cite{borenstein1988ultrasonic}. To optimize 2D LiDAR processing, point clouds are often abstracted into geometric primitives. Catapang and Ramos~\cite{catapang2016lidar} and Nguyen et al.~\cite{nguyen2005lineextraction} grouped points within a specific distance into clusters. To extract shapes, Sezer and Gokasan~\cite{sezer2012follow} used circle approximations. For line extraction, Nguyen et al.~\cite{nguyen2005lineextraction} compared several common line-extraction algorithms and reported that ``Split and Merge'' provided the most efficient method for converting raw LiDAR points into lines, while still being very accurate, which has made it a common choice in subsequent work.
 
 Dealing with dynamic agents like pedestrians is another challenge. While some approaches treat pedestrians differently from static obstacles, they often rely on heavy Reinforcement Learning and 3D tracking~\cite{du2019groupsurfing}, which conflicts with computational efficiency. However, Arras et al.~\cite{arras2007people} demonstrated that detecting dynamic agents in 2D range data is possible using only static geometric features.
 
-To further optimize feature detection, Xavier et al.~\cite{xavier2005circledetection} introduced an approach with an $O(n)$ linear complexity using Inscribed Angle Variance (IAV). This allows a system to quickly categorize features into straight lines, arcs, and legs within milliseconds.
-% O.F. Тут теж мене власне конкретні мілісекунди напрягають -- бо від заліза і конкретних умова мало б сильно залежати...
+To further optimize feature detection, Xavier et al.~\cite{xavier2005circledetection} introduced an approach with $O(n)$ linear complexity based on Inscribed Angle Variance (IAV). The linear complexity allows a system to categorize features into straight lines, arcs, and legs with low per-scan overhead, making it suitable for real-time use even on modest hardware.
 
 \section{Conclusion}
+\label{sec:rw-conclusion}
 
-The problem of autonomous navigation has been researched extensively, leading to a variety of path planning and obstacle avoidance algorithms. However, many modern advancements rely on resource-intensive methods, utilizing sensors like 3D LiDARs and requiring heavy algorithms like SLAM or MPPI. As a result, there is a limited understanding of the performance bounds of the minimal, low-cost sensor suites. Because advanced algorithms dominate recent studies, the capabilities of computationally lightweight architectures in unpredictable outdoor environments remain underexplored.
+The problem of autonomous navigation has been researched extensively, leading to a variety of path planning and obstacle avoidance algorithms. However, many modern advancements rely on resource-intensive methods, utilizing sensors like 3D LiDARs and requiring heavy algorithms like SLAM or MPPI. As a result, there is a limited understanding of the performance bounds of minimal, low-cost sensor suites. Because advanced algorithms dominate recent studies, the capabilities of computationally lightweight architectures in unpredictable outdoor environments remain underexplored.
 
-Based on these limitations, the goal of this research is to build and evaluate a resource-efficient navigation system. By replacing SLAM with semantic OpenStreetMap data, abstracting 2D LiDAR data into geometric obstacles, and using CPU-optimized TEB algorithms, this thesis aims to show that a minimal sensor configuration can demonstrate feasible autonomous navigation in complex outdoor environments. % can navigate complex outdoor environments safely and effectively.
+Based on these limitations, the goal of this research is to build and evaluate a resource-efficient navigation system. By replacing SLAM with semantic OpenStreetMap data, abstracting 2D LiDAR data into geometric obstacles, and using CPU-optimized TEB algorithms, this thesis aims to show that a minimal sensor configuration can demonstrate feasible autonomous navigation in complex outdoor environments.
 
