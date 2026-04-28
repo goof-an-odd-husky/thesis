@@ -20,7 +20,7 @@ Higher-level mission planning is outside the scope of this work and is not discu
 % O.F. Я не фахівець, але здається тут таки більше пунктів виділяють... Якщо так, варто їх згадати, навіть якщо далі не обговорюватимете -- так і сказавши. Якщо ні -- просто викиньте цей комент.
 % R.H. Додав ширшу картину.
 
-Research has explored both layers extensively, developing algorithms to handle different environmental constraints and vehicle kinematics. Surveys, such as those by Pandey et al.~\cite{pandey2017review} and Karur et al.~\cite{karur2021survey}, categorize these approaches based on environmental assumptions (static vs. dynamic maps) and vehicle models (holonomic vs. non-holonomic), highlighting trade-offs between completeness, optimality, and real-time feasibility.
+Both global routing and local trajectory generation have been addressed through various algorithms tailored to different environmental constraints and vehicle kinematics. Surveys, such as those by Pandey et al.~\cite{pandey2017review} and Karur et al.~\cite{karur2021survey}, categorize these approaches based on environmental assumptions (static vs. dynamic maps) and vehicle models (holonomic vs. non-holonomic), highlighting trade-offs between completeness, optimality, and real-time feasibility.
 
 For global planning, graph-based approaches like Dijkstra's algorithm and A* are commonly used because they are reliable and optimal on static maps under an admissible heuristic~\cite{karur2021survey}. When the environment is partially unknown or dynamically changing, incremental search algorithms such as D* and D* Lite allow efficient path repair by updating only affected segments rather than recomputing the entire route. For high-dimensional configuration spaces or complex non-holonomic constraints, sampling-based algorithms like Rapidly-exploring Random Trees (RRT) and Probabilistic Roadmaps (PRM)~\cite{lavalle2006planning} probabilistically explore the space without requiring full discretization, though they often require post-processing for path smoothness.
 
@@ -41,7 +41,7 @@ The Timed Elastic Band (TEB) algorithm~\cite{rosmann2012teb} extends this idea u
 
 While MPC methods generate better trajectories than reactive methods like DWA,
 %~\ref{TODO: image of difference between DWA (multitude of small arrows, one of which is main) and MPC (the whole trajectory ahead plus an arrow)}
-they require more computational power. MPPI, in particular, requires parallel sampling that often necessitates a GPU, making it unsuitable for constrained hardware. Therefore, a CPU-optimized approach like TEB~\cite{rosmann2013sparse} provides a good balance between navigational performance and computational efficiency.
+they require more computational power. MPPI, in particular, requires parallel sampling. And while possible to run on CPU with acceptable control frequency, often necessitates a GPU~\cite{app15169114}, making it unsuitable for constrained hardware. Therefore, a CPU-optimized approach like TEB~\cite{rosmann2013sparse} provides a good balance between navigational performance and computational efficiency.
 
 % O.F. До обговорення: наскільки цей огляд "щільний" -- повний та згадує основні підходи, або популярні, або обговорювані в літературі активно?
 % R.H. Додав трішки інформації з surveys та кілька методів глобальної навігації
@@ -96,7 +96,4 @@ To further optimize feature detection, Xavier et al.~\cite{xavier2005circledetec
 \section{Conclusion}
 \label{sec:rw-conclusion}
 
-The problem of autonomous navigation has been researched extensively, leading to a variety of path planning and obstacle avoidance algorithms. However, many modern advancements rely on resource-intensive methods, utilizing sensors like 3D LiDARs and requiring heavy algorithms like SLAM or MPPI. As a result, there is a limited understanding of the performance bounds of minimal, low-cost sensor suites. Because advanced algorithms dominate recent studies, the capabilities of computationally lightweight architectures in unpredictable outdoor environments remain underexplored.
-
-Based on these limitations, the goal of this research is to build and evaluate a resource-efficient navigation system. By replacing SLAM with semantic OpenStreetMap data, abstracting 2D LiDAR data into geometric obstacles, and using CPU-optimized TEB algorithms, this thesis aims to show that a minimal sensor configuration can demonstrate feasible autonomous navigation in complex outdoor environments.
-
+While extensive research has produced a wide array of path planning and obstacle avoidance algorithms, many modern advancements heavily rely on resource-intensive perception and computation, such as 3D LiDARs, MPPI or SLAM. As a result, the performance bounds of minimal, low-cost sensor suites in unpredictable outdoor environments remain underexplored. Based on these limitations, the goal of this research is to build and evaluate a resource-efficient navigation system. By replacing SLAM with semantic OpenStreetMap data, abstracting 2D LiDAR data into geometric obstacles, and using CPU-optimized TEB algorithms, this thesis aims to show that a minimal sensor configuration can demonstrate feasible autonomous navigation in complex outdoor environments.

@@ -14,7 +14,7 @@ The objective of this research is to enable a UGV to reach a target position (de
 % R.H. Виправив
 Building upon the theoretical models established in Chapter~\ref{chap:theoretical-background}, the proposed solution is an OSM-based hierarchical autonomous navigation system designed for a semi-structured outdoor pedestrian environment. 
 
-A semi-structured environment, such as a park, provides fixed paved paths but also contains dynamic, unpredictable obstacles such as pedestrians. The core constraint of the problem is to design a resource-efficient setup using only a minimal sensor suite (2D LiDAR, GPS, IMU, wheel odometry) without relying on computationally intensive and energy-demanding hardware like GPUs, 3D LiDARs, or RGB-D cameras. By combining semantic-graph-based global routing with receding-horizon local trajectory optimization, the system aims to minimize computational demands while maintaining reliable obstacle avoidance and spatial accuracy.
+The core constraint of this implementation is achieving reliable obstacle avoidance and spatial accuracy utilizing only a minimal sensor suite (2D LiDAR, GPS, IMU, wheel odometry) and an onboard CPU. By integrating semantic-graph-based global routing with receding-horizon local trajectory optimization, the system aims to minimize computational demands while maintaining reliable obstacle avoidance and spatial accuracy.
 
 \section{Hardware and Environment Setup}
 \label{sec:hardware-setup}
@@ -168,15 +168,15 @@ To resolve this, a latency compensation mechanism is implemented. Before the nex
 \subsection{Parameter Selection}
 \label{subsec:parameter-selection}
 
-To ensure the autonomous system operates safely and reliably, the algorithmic parameters were tuned to match both the physical properties of the UGV and the computational constraints of the onboard hardware.
+Algorithmic parameters for the navigation stack are derived from the physical kinematics of the UGV and the computational bounds of the onboard hardware, ensuring kinodynamically feasible and real-time execution.
 
 \subsubsection{Spatial and Obstacle Constraints}
 \label{subsubsec:spatial-constraints}
 \begin{itemize}
-    \item \textit{Safety and Critical Radii.} The system uses a dual-boundary approach. The ``safety radius'' is set to $1.3\text{ m}$, establishing a soft buffer slightly larger than the UGV's length. The optimizer penalizes trajectories entering this zone. Additionally, a ``critical stop radius'' is defined at $0.5\text{ m}$. If any obstacle breaches this distance, an immediate emergency stop is triggered.
-    \item \textit{Cluster Break Distance.} Set to $1.4\text{ m}$, which is roughly 1.5 times the physical width of the robot. If the gap between two sequential LiDAR points is smaller than this threshold, the UGV would physically struggle to navigate through it. Therefore, the clustering algorithm treats the gap as unpassable and merges the points into a single solid obstacle.
-    \item \textit{LiDAR Filtering.} A ``min scan range'' of $0.33\text{ m}$ is enforced to filter out laser rays reflecting off the Husky's own chassis. Additionally, a 1D median filter of size $3$ is applied to the raw scans. This eliminates isolated single-ray noise (e.g., sensor artifacts or flying debris) without overly smoothing out genuine narrow obstacles.
-    \item \textit{Virtual Barriers.} To prevent the local planner from navigating off the pavement into unstructured terrain, a ``barrier offset'' of $2.0\text{ m}$ is applied. Empirically, pedestrian paths in the targeted park environment have a minimum width of roughly 4 meters. Applying a 2-meter virtual line obstacle to both the left and right of the global path's center confines the trajectory to the pavement.
+    \item \textit{Safety and Critical Radii.} The system uses a dual-boundary approach to account for the physical footprint of the UGV and control latency. The ``safety radius'' is set to $1.3\text{ m}$, establishing a soft buffer slightly larger than the UGV's length. The optimizer penalizes trajectories entering this zone. Additionally, a ``critical stop radius'' is defined at $0.5\text{ m}$. If any obstacle breaches this distance, an immediate emergency stop is triggered.
+    \item \textit{Cluster Break Distance.} This threshold is derived from the robot's kinematic clearance requirement. Since the UGV cannot physically traverse gaps narrower than its own width plus a safety margin, the break distance is set to $1.4\text{ m}$. Sequential LiDAR points separated by less than this threshold are merged into a single solid obstacle boundary.
+    \item \textit{LiDAR Filtering.} To prevent self-occlusion artifacts, a minimum scan range of $0.33\text{ m}$ is enforced, explicitly masking rays reflected by the UGV's chassis. A 1D median filter (window size $3$) is subsequently applied to reject isolated single-ray noise without overly smoothing out the geometry of genuine narrow obstacles.
+    \item \textit{Virtual Barriers.} Constraining the local planner to paved surfaces requires explicit spatial bounds. Given that pedestrian paths in the target environment maintain a minimum width of approximately 4 meters, a $2.0\text{ m}$ parallel lateral offset is applied relative to the global A* route. This generates virtual line obstacles that restrict the trajectory optimizer to the pavement.
 \end{itemize}
 
 \subsubsection{Kinodynamic Limits}
@@ -196,12 +196,12 @@ To ensure the autonomous system operates safely and reliably, the algorithmic pa
 \subsection{Safety Mechanisms}
 \label{subsec:safety-mechanisms}
 
-Because the system relies on a minimal sensor suite, it inherently possesses perceptual blind spots -- most notably the lack of vertical vision due to the 2D LiDAR. To ensure the safe operation of a heavy UGV in a public environment, a hierarchy of safety nets was implemented. If any of the following conditions are met, the system overrides the local planner and triggers an immediate software-level emergency stop (E-Stop), halting all movement.
+The reliance on a strictly 2D perception pipeline introduces inherent vertical blind spots -- most notably the lack of vertical vision due to the 2D LiDAR. To ensure the safe operation of a heavy UGV in a public environment, a hierarchy of safety nets was implemented. If any of the following conditions are met, the system overrides the local planner and triggers an immediate software-level emergency stop (E-Stop), halting all movement.
 
 \subsubsection{Terrain Anomalies}
 \label{subsubsec:safety-terrain}
 
-A 2D LiDAR scans a single horizontal plane and cannot detect low obstacles (like rocks), drop-offs, or curbs. To compensate, the internal IMU monitors the vehicle's orientation. If the pitch or roll exceeds a threshold, it indicates the UGV is driving over an unseen obstacle or falling into a ditch, triggering an immediate stop.
+To compensate for the 2D LiDAR's inability to detect negative obstacles (drop-offs) or low-lying obstacles (curbs, rocks), the internal IMU continuously monitors pitch and roll variances. Exceeding predefined angular thresholds indicates terrain anomalies, triggering an emergency stop.
 
 \subsubsection{Proximity Breach}
 \label{subsubsec:safety-proximity}
@@ -226,7 +226,7 @@ If the UGV is forced to dodge multiple obstacles and its position deviates beyon
 \subsubsection{Localization Jumps}
 \label{subsubsec:safety-localization-jumps}
 
-While GPS may produce high-frequency errors, IMU and wheel odometry do not. If a jump in the latter is noticed (significantly larger than the vehicle's maximum velocity), the system halts to wait for the localization to stabilize.
+While GPS may produce high-frequency errors, IMU and wheel odometry streams should remain continuous. Any detected spatial discontinuity in the odometry estimate significantly larger than the vehicle's maximum velocity indicates a localization failure, pausing execution until the filter stabilizes.
 
 \subsubsection{Motion Stall}
 \label{subsubsec:safety-motion-stall}

@@ -14,7 +14,7 @@ This chapter presents the theoretical foundations underlying the proposed lightw
 %     \label{fig:system_block_diagram}
 % \end{figure}
 
-Together, these components form a pipeline in which each layer reduces the volume of raw data passed to the next: hundreds of LiDAR points become a handful of primitives, multi-sensor streams collapse into a single pose estimate, and a global graph of thousands of nodes is compressed into a short sliding window of waypoints for the optimizer.
+Together, these components form a pipeline in which each layer reduces the volume of raw data passed to the next: raw LiDAR scans are abstracted into a compact set of geometric primitives, multi-sensor streams are fused into a single pose estimate, and a global graph containing thousands of nodes is compressed into a short sliding window of waypoints for the optimizer.
 
 \section{Sensor Characteristics}
 \label{sec:sensor-characteristics}
@@ -41,7 +41,7 @@ These sensors have complementary properties. Encoders and IMUs provide frequent 
 \section{Differential Drive UGV}
 \label{sec:differential-drive}
 
-In this thesis, the robot uses a four-wheeled skid-steer differential drive configuration. While the machine has four points of contact with the ground, steering is achieved through a velocity differential between the left and right wheel pairs.
+The experimental platform utilizes a four-wheeled skid-steer differential drive configuration. Steering is achieved through a velocity differential between the left and right wheel pairs, introducing specific kinematic constraints.
 
 To generate realistic and executable trajectories, autonomous planners must respect the physical limitations of the robot, which are broadly categorized into kinematic and dynamic constraints. Together, these define the robot's kinodynamic constraints.
 
@@ -103,7 +103,7 @@ the heuristic must be admissible, meaning it never overestimates the actual cost
 
 In this work, edge costs equal segment lengths, so A* returns the shortest geometric route. However, the same framework supports richer cost functions: edges may be weighted by expected travel time, surface quality (favoring paved over unpaved terrain) or the side of the pavement (preferring the right side)~\cite{stahr2023osm}. The choice of edge cost simply has to remain consistent with an admissible heuristic for optimality guarantees to hold.
 
-By prioritizing nodes with lower $f(n)$ values, the algorithm preferentially expands vertices that lie roughly in the direction of the goal, rather than spreading uniformly in all directions as Dijkstra's algorithm would. This significantly reduces the number of vertices processed while preserving optimality.
+By prioritizing nodes with lower $f(n)$ values, the algorithm preferentially expands vertices oriented toward the target, rather than propagating uniformly in all directions as Dijkstra's algorithm would. This significantly reduces the number of vertices processed while preserving path optimality.
 % O.F. Може просто скажіть, що краще в напрямку цілі, еліпс тут може збивати...
 % R.H. +
 
@@ -211,7 +211,7 @@ If an optimizer starts from a blank slate (a cold start) at every control step, 
 \section{Sensor Fusion}
 \label{sec:sensor-fusion}
 
-Sensors contain noise and inherent inaccuracies. As described in Section~\ref{sec:sensor-characteristics}, wheel odometry accumulates drift from mechanical slippage, IMU measurements integrate into unbounded error~\cite{woodman2007inertial,moore2015ekf}, and GPS receivers provide absolute global coordinates but suffer from high-frequency noise, signal obstruction, and multipath effects~\cite{schmidt2025vislam}. No single sensor in the minimal suite is sufficient on its own; combining them through probabilistic state estimation allows their complementary strengths to compensate for individual weaknesses. % O.F. Ось тут може й можна вже лишити так, на прикладах, про GPS...
+Raw sensor measurements are inherently corrupted by noise and specific inaccuracies. As described in Section~\ref{sec:sensor-characteristics}, wheel odometry accumulates drift from mechanical slippage, IMU measurements integrate into unbounded error~\cite{woodman2007inertial,moore2015ekf}, and GPS receivers provide absolute global coordinates but suffer from high-frequency noise, signal obstruction, and multipath effects~\cite{schmidt2025vislam}. No single sensor in the minimal suite is sufficient on its own; combining them through probabilistic state estimation allows their complementary strengths to compensate for individual weaknesses. % O.F. Ось тут може й можна вже лишити так, на прикладах, про GPS...
 
 % O.F. Воно б мені пасувало фільтри Калмана винести в окремий підрозді і більше про них написати -- щоб читачі розуміли, що Ви їх розумієте.
 % R.H. Прийнято. Хоча супер докладно розказувати -- не зовсім для мене, бо я і так готову лібу використовую

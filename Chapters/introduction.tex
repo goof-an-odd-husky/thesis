@@ -6,16 +6,16 @@
 \section{Background and Motivation}
 \label{sec:background-motivation}
 
-Mobile robotic systems are an important field, especially for tasks that are monotonous, remote, or located in hazardous environments. Manual control of such robots is often infeasible due to the sheer number of systems and the volume of their tasks. Furthermore, physical barriers such as distance or signal interference can cause the remote control to fail. Therefore, autonomous systems are necessary to independently determine paths and navigate toward target locations.
+Mobile robotics has become increasingly important for applications involving monotonous, remote, or hazardous tasks. Manual teleoperation of such systems is often infeasible due to scalability constraints, communication latency, and signal degradation in obstructed environments. Consequently, deploying autonomous systems capable of independent path finding and target navigation provides a more robust operational paradigm.
 
-Outdoor navigation is typically more complex than indoor navigation. Systems must handle less predictable conditions, such as moving obstacles, uneven terrain, and pedestrians who do not necessarily cooperate with the robot.
+Outdoor navigation introduces significant complexities compared to indoor environments, as systems must account for less predictable conditions, including moving obstacles, uneven terrain, and non-cooperative dynamic agents.
 
-Today, ready-made solutions for autonomous navigation exist, such as the Nav2 stack in ROS~\cite{nav2_docs}. However, modern outdoor systems often rely on resource-intensive sensors (like 3D LiDARs with data rates of millions of points per second, and RGB-D cameras) and complex algorithms (like Visual SLAM~\cite{schmidt2025vislam} and MPPI~\cite{williams2016mppi}). 
+Currently, off-the-shelf software frameworks for autonomous navigation exist, such as the Nav2 stack in ROS~\cite{nav2_docs}. However, modern outdoor systems often rely on resource-intensive sensors (like 3D LiDARs with data rates of millions of points per second, and RGB-D cameras) and complex algorithms (like Visual SLAM~\cite{schmidt2025vislam} and MPPI~\cite{williams2016mppi}).
 % O.F. Оце heavy sensors мене напрягає, зізнаюся -- можуть виникнути питання. Можливо, варто тут більше написати подробиць, окреслити спектр рішень і де Ваше поміж них. Маса-точніст-енергоспоживання-потоки даних etc
 % R.H. Виправив
 These approaches may provide superior accuracy in unstructured environments but demand substantial computational resources, large amounts of RAM (often 4-16 GB), and sometimes GPUs. This increases costs, drains battery life, and is not always possible on simple, low-cost platforms.
 
-Therefore, there is a motivation to explore what can be accomplished using a minimal, lightweight sensor suite. By avoiding heavy computations, it is possible to build a more accessible and energy-efficient system.
+Therefore, there is a strong motivation to investigate the capabilities of a minimal, lightweight sensor suite for navigation. Mitigating the reliance on computationally intensive perception pipelines enables more accessible, cost-effective, and energy-efficient robotic platforms.
 
 Instead of generating a map from scratch using SLAM, existing semantic data such as OpenStreetMap (OSM) can be used for global routing~\cite{hentschel2010osm}. Instead of processing 3D point clouds or images, a simple 2D LiDAR can handle immediate, dynamic obstacles like pedestrians or trees. Finally, instead of using visual odometry, the system can rely on standard GPS fused with an IMU and wheel odometry for localization~\cite{moore2015ekf}.
 
