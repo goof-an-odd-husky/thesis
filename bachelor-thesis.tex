@@ -161,13 +161,29 @@ headsepline, % Uncomment to get a line under the header
 
 \begin{abstract}
 \addchaptertocentry{\abstractname}
-TODO
+
+Autonomous outdoor navigation for Unmanned Ground Vehicles (UGVs) traditionally relies on resource-intensive perception pipelines, such as Visual SLAM and 3D LiDARs. Because these algorithms demand substantial memory and processing power, they are often impractical for lightweight platforms. This thesis therefore investigates whether a minimal sensor suite (2D LiDAR, GPS, IMU, encoders) and a CPU-optimized planner are sufficient for safe, reliable navigation in semi-structured environments.
+
+The proposed pipeline eliminates runtime mapping by utilizing OpenStreetMap (OSM) and A* global routing. Localization relies on a dual Extended Kalman Filter (EKF), while 2D LiDAR scans are abstracted into geometric primitives for obstacle avoidance. Trajectories are optimized via a custom Python Timed Elastic Band (TEB) Ceres implementation, seeded by a dynamic visibility-graph A* search.
+
+Evaluated through dynamic simulations of Stryiskyi Park and validated on a Clearpath Husky UGV, the system achieved an 83.3\% success rate. It maintained a 10 Hz control frequency using only 293 MB of RAM and under 13\% CPU utilization on a mobile processor. These results demonstrate that reliable autonomous navigation is achievable without heavy 3D perception, establishing a cost-effective paradigm for UGV deployment.
+
+Source code: \url{https://github.com/goof-an-odd-husky}.
+
 \end{abstract}
 
-% \begin{acknowledgements}
-% \addchaptertocentry{\acknowledgementname}
-% TODO?
-% \end{acknowledgements}
+\begin{acknowledgements}
+\addchaptertocentry{\acknowledgementname}
+
+This project would not have been possible without the help of my supervisors, Oleg Farenyuk and Oleksandr Kosovan. I appreciate their time, their patience with my drafts, and their technical direction. 
+
+A special thanks goes to Hordii Yeliseyev for helping me navigate the hardware configuration for the Clearpath Husky, which was essential for the real-world validation of this system.
+
+Thanks to Botizen, The Association of Robot Citizens, for supporting this research.
+
+Lastly, I want to thank my family and my classmates at UCU for keeping me sane throughout the process.
+
+\end{acknowledgements}
 
 
 \tableofcontents
@@ -176,37 +192,79 @@ TODO
 
 \listoftables
 
-% TODO?
-% \begin{abbreviations}{ll}
-%
-% \textbf{TD} & \textbf{T}o \textbf{D}o\\
-%
-% \end{abbreviations}
+\begin{abbreviations}{ll}
 
-% \begin{constants}{lr@{${}={}$}l}
-%
-% The \SI{}{} command is provided by the siunitx package, see its documentation for instructions on how to use it
-%
-% TODO? & $c_{0}$ & \SI{2.99792458e8}{\meter\per\second} (exact)\\
-%Constant Name & $Symbol$ & $Constant Value$ with units\\
-%
-% \end{constants}
+\textbf{ACO} & \textbf{A}nt \textbf{C}olony \textbf{O}ptimization\\
+\textbf{APF} & \textbf{A}rtificial \textbf{P}otential \textbf{F}ields\\
+\textbf{BLE} & \textbf{B}luetooth \textbf{L}ow \textbf{E}nergy\\
+\textbf{CPU} & \textbf{C}entral \textbf{P}rocessing \textbf{U}nit\\
+\textbf{DWA} & \textbf{D}ynamic \textbf{W}indow \textbf{A}pproach\\
+\textbf{DWB} & \textbf{D}ynamic \textbf{W}indow Approach Controller\\
+\textbf{EKF} & \textbf{E}xtended \textbf{K}alman \textbf{F}ilter\\
+\textbf{ENU} & \textbf{E}ast-\textbf{N}orth-\textbf{U}p\\
+\textbf{GA} & \textbf{G}enetic \textbf{A}lgorithms\\
+\textbf{GB / MB} & \textbf{G}iga\textbf{b}yte / \textbf{M}ega\textbf{b}yte\\
+\textbf{GIL} & \textbf{G}lobal \textbf{I}nterpreter \textbf{L}ock\\
+\textbf{GPS} & \textbf{G}lobal \textbf{P}ositioning \textbf{S}ystem\\
+\textbf{GPU} & \textbf{G}raphics \textbf{P}rocessing \textbf{U}nit\\
+\textbf{Hz} & \textbf{H}ert\textbf{z}\\
+\textbf{IAV} & \textbf{I}nscribed \textbf{A}ngle \textbf{V}ariance\\
+\textbf{IMU} & \textbf{I}nertial \textbf{M}easurement \textbf{U}nit\\
+\textbf{KJV} & \textbf{K}ing \textbf{J}ames \textbf{V}ersion\\
+\textbf{LiDAR} & \textbf{Li}ght \textbf{D}etection \textbf{a}nd \textbf{R}anging\\
+\textbf{LTS} & \textbf{L}ong-\textbf{T}erm \textbf{S}upport\\
+\textbf{MPC} & \textbf{M}odel \textbf{P}redictive \textbf{C}ontrol\\
+\textbf{MPPI} & \textbf{M}odel \textbf{P}redictive \textbf{P}ath \textbf{I}ntegral\\
+\textbf{OSM} & \textbf{O}pen\textbf{S}treet\textbf{M}ap\\
+\textbf{PRM} & \textbf{P}robabilistic \textbf{R}oad\textbf{m}aps\\
+\textbf{RAM} & \textbf{R}andom \textbf{A}ccess \textbf{M}emory\\
+\textbf{RGB-D} & \textbf{R}ed-\textbf{G}reen-\textbf{B}lue \textbf{D}epth\\
+\textbf{ROS} & \textbf{R}obot \textbf{O}perating \textbf{S}ystem\\
+\textbf{RRT} & \textbf{R}apidly-exploring \textbf{R}andom \textbf{T}rees\\
+\textbf{SLAM} & \textbf{S}imultaneous \textbf{L}ocalization \textbf{a}nd \textbf{M}apping\\
+\textbf{TEB} & \textbf{T}imed \textbf{E}lastic \textbf{B}and\\
+\textbf{UGV} & \textbf{U}nmanned \textbf{G}round \textbf{V}ehicle\\
+\textbf{UI} & \textbf{U}ser \textbf{I}nterface\\
+\textbf{UWB} & \textbf{U}ltra-\textbf{W}ide\textbf{b}and\\
+\textbf{VFH} & \textbf{V}ector \textbf{F}ield \textbf{H}istogram\\
+\textbf{VI-SLAM} & \textbf{V}isual-\textbf{I}nertial \textbf{S}imultaneous \textbf{L}ocalization \textbf{a}nd \textbf{M}apping\\
+\textbf{WGS84} & \textbf{W}orld \textbf{G}eodetic \textbf{S}ystem 1984\\
 
-% \begin{symbols}{lll}
-%
-% $t$ & TODO? & \si{\radian} \\
-%
-% $a$ & distance & \si{\meter} \\
-% $P$ & power & \si{\watt} (\si{\joule\per\second}) \\
-% %Symbol & Name & Unit \\
+\end{abbreviations}
 
-% \addlinespace % Gap to separate the Roman symbols from the Greek
+\begin{symbols}{lll}
 
-% $\omega$ & angular frequency & \si{\radian} \\
-%
-% \end{symbols}
+% --- Roman Symbols ---
+$a_{max}$ & Maximum linear acceleration & \si{\meter\per\second\squared} \\
+$d$ & Shortest distance to an obstacle & \si{\meter} \\
+$\mathbf{F}_k$ & State transition Jacobian matrix & -- \\
+$\mathbf{J}_{ij}$ & Jacobian matrix of partial derivatives & -- \\
+$\mathbf{K}_k$ & Kalman gain matrix & -- \\
+$\mathbf{P}_k$ & State covariance matrix & -- \\
+$\mathbf{Q}_k$ & Process noise covariance matrix & -- \\
+$R_i$ & Least-squares optimization residual & -- \\
+$r_{obs}$ & Obstacle geometric radius & \si{\meter} \\
+$r_{safe}$ & Safety boundary margin & \si{\meter} \\
+$\mathbf{u}_k$ & Control input vector & -- \\
+$v$ & Linear velocity & \si{\meter\per\second} \\
+$w$ & Residual scalar weight & -- \\
+$x, y$ & Cartesian spatial coordinates & \si{\meter} \\
+$\mathbf{x}_k$ & Filter state vector & -- \\
+$\mathbf{z}_k$ & Filter measurement vector & -- \\
 
-% \dedicatory{For/Dedicated to/To my\ldots TODO?} 
+\addlinespace % Gap to separate the Roman symbols from the Greek
+
+% --- Greek Symbols ---
+$\alpha$ & Softmin smoothing parameter & -- \\
+$\Delta t_i$ & Time interval between consecutive poses & \si{\second} \\
+$\varepsilon_{max}$ & Maximum angular acceleration & \si{\radian\per\second\squared} \\
+$\theta$ & Robot heading (yaw) angle & \si{\radian} \\
+$\vartheta_i$ & Angle between heading and displacement vector & \si{\radian} \\
+$\omega$ & Angular velocity & \si{\radian\per\second} \\
+
+\end{symbols}
+
+\dedicatory{To my father, who serves in the military so that I could finish this.}
 
 \mainmatter % Begin numeric (1,2,3...) page numbering
 
