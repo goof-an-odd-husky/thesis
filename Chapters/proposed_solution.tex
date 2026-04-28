@@ -22,13 +22,12 @@ The core constraint of this implementation is achieving reliable obstacle avoida
 The experimental subject of this research is the Clearpath Husky A200~\cite{clearpath_husky}, a medium-sized UGV. The Husky is a rugged, four-wheeled skid-steer platform designed for research applications. It has a physical footprint of $99 \times 67 \times 39 \text{ cm}$, weighing approximately $50 \text{ kg}$.
 
 % O.F. Додайте фото Хаскі :=) Можна в міру кумедне, але без людей зверху
-% \begin{figure}[htpb]
-%     \centering
-%     % TODO: Add a moderately funny photo of the Husky A200
-%     \includegraphics[width=0.7\textwidth]{figures/TODO_husky_photo.jpg}
-%     \caption{The Clearpath Husky A200 UGV utilized as the experimental platform.}
-%     \label{fig:husky_robot}
-% \end{figure}
+\begin{figure}[htpb]
+    \centering
+    \includegraphics[width=0.5\textwidth]{figures/husky-a200.pdf}
+    \caption{The Clearpath Husky A200 UGV utilized as the experimental platform.}
+    \label{fig:husky_robot}
+\end{figure}
 
 The UGV is equipped with a minimal sensor suite and compute setup, which includes:
 \begin{itemize}
@@ -92,8 +91,62 @@ Clusters with fewer than three points are automatically classified as circles. F
 \subsubsection{Primitives Extraction}
 \label{subsubsec:impl-primitives}
 To ensure stability against sensor noise and bias introduced with algebraic curvature methods of circle extraction, a spatial heuristic is used. The maximum Euclidean distance between any two points in the cluster (the chord width) establishes an initial diameter estimate. To counteract sensor noise and the systematic cylinder overestimation identified by Forsman et al.~\cite{forsman2017bias}, the radius (half diameter) is clamped between predefined physical minimum and maximum bounds. Instead of calculating a mathematical center from the arc, the visible middle point of the cluster is projected outward from the sensor origin by the estimated radius to approximate the true geometric centroid. Finally, the radius is expanded, so that all points in the cluster are enclosed. This method mitigates overestimations while implicitly providing a safety margin. 
-% TODO: Add image.
+% TODO: ref image.
 Clusters classified as lines are processed using the recursive Split-and-Merge algorithm to yield distinct linear segments, as detailed in Section~\ref{subsec:line-fitting}.
+
+\begin{figure}[htpb]
+    \centering
+    \begin{tikzpicture}[
+        scale=1.4,
+        point/.style={circle, draw=black, fill=black, inner sep=0pt, minimum size=3.5pt},
+        midpoint/.style={circle, draw=red!80!black, fill=red!80!black, inner sep=0pt, minimum size=4.5pt},
+        ray/.style={gray, dashed, thin},
+        vector/.style={-Stealth, thick, blue},
+        dim/.style={<->, >=Stealth, thick, darkgray}
+    ]
+
+    \coordinate (O) at (-3.5, 0);
+    \coordinate (P1) at (0.4, -1.6);
+    \coordinate (P2) at (0.0, -1.1);
+    \coordinate (P3) at (-0.2, -0.55);
+    \coordinate (P4) at (-0.3, 0);
+    \coordinate (P5) at (-0.2, 0.55);
+    \coordinate (P6) at (0.0, 1.1);
+    \coordinate (P7) at (0.4, 1.6);
+
+    \coordinate (C) at (1.3, 0);
+
+    \def\Rfinal{1.836}
+
+    \draw[draw=blue, fill=blue!5, thick, dashed] (C) circle (\Rfinal);
+
+    \node[point, fill=darkgray, draw=darkgray, label=above:{\small Sensor Origin}] (OriginNode) at (O) {};
+    \draw[ray] (O) -- (P1);
+    \draw[ray] (O) -- (P7);
+    \draw[ray] (O) -- (P4) node[midway, below, font=\footnotesize, text=gray, yshift=-30pt, xshift=-10pt] {Line of sight};
+
+    \draw[gray, thick] (P1) -- (P7);
+    \draw[dim] (3.4, -1.6) -- (3.4, 1.6) node[midway, right] {Chord Width ($W \approx 2 R_{est}$)};
+    \draw[gray, dotted, thick] (P1) -- (3.4, -1.6);
+    \draw[gray, dotted, thick] (P7) -- (3.4, 1.6);
+
+    \foreach \i in {1,2,3,5,6,7} {
+        \node[point] at (P\i) {};
+    }
+    \node[midpoint] (Mid) at (P4) {};
+    \node[anchor=south east, font=\small, text=red!80!black, xshift=-7pt, yshift=2pt] at (P4) {Visible Middle};
+
+    \draw[vector] (P4) -- (C) node[midway, below] {$R_{est}$};
+    \draw[vector, red, thick, dashed] (C) -- (P7) node[midway, above, sloped] {$R_{final}$};
+
+    \draw[blue, thick] ([xshift=-3.5pt,yshift=-3.5pt]C) -- ([xshift=3.5pt,yshift=3.5pt]C);
+    \draw[blue, thick] ([xshift=-3.5pt,yshift=3.5pt]C) -- ([xshift=3.5pt,yshift=-3.5pt]C);
+    \node[anchor=north west, font=\small, text=blue, yshift=-2pt] at (C) {Estimated Centroid};
+
+    \end{tikzpicture}
+    \caption{Custom spatial heuristic for circular primitive extraction.}
+    \label{fig:circle_extraction}
+\end{figure}
 
 \subsubsection{Virtual Boundaries}
 \label{subsubsec:virtual-boundaries}
@@ -105,8 +158,7 @@ To restrict the UGV to the pedestrian path, virtual line obstacles are generated
 An Extended Kalman Filter, described in Section~\ref{sec:sensor-fusion}, is implemented via the \texttt{robot\_localization} ROS 2 package. The EKF is configured to fuse data from the internal IMU and wheel encoders for continuous state estimation. It is used for the trajectory updates, so as not to introduce sudden shifts for the TEB local planner.
 
 Another EKF is used to take into account low-frequency GPS data. It is projected onto a local Cartesian tangent plane and fused to reduce the drift. This second filter's output is used to update the direction toward the target, ensuring the vehicle reaches the exact destination.
-
-% TODO: insert diagram showing EKF relationship (one filter uses another)
+% TODO: ref the image where the EKF relationship is shown
 
 In fallback scenarios where GPS is disabled or unavailable, the direction to the global goal is only updated using the first filter, which uses IMU and wheel odometry.
 
@@ -147,7 +199,6 @@ where $\alpha > 0$ is a configurable smoothing parameter that dictates how stric
     \end{cases}
 \end{equation}
 where $r_{safe}$ is the safety margin around the robot and $w$ is the residual weight (analogous to the circular obstacle formulation in Section~\ref{sec:trajectory-optimization}).
-% TODO: mb image
 
 \paragraph{Starting Dynamics Cost}
 

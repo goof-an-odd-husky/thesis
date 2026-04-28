@@ -320,47 +320,92 @@ A practical advantage of this fusion scheme is graceful degradation: if a sensor
 
 Raw LiDAR scans frequently contain isolated noise spikes and artifacts. Therefore, the points are first passed through a median filter to reject extreme outliers. The filtered point clouds are then grouped into discrete clusters using distance-based segmentation~\cite{nguyen2005lineextraction}. Points are assigned to a single sequential object if the Euclidean distance between consecutive measurements $P_i$ and $P_{i+1}$ is below a defined break distance. The vehicle diameter, with some padding, can serve as an effective threshold, as narrower gaps would not be passable by the robot.
 
-% \begin{figure}[htpb]
-%     \centering
-%     \includegraphics[width=0.6\textwidth]{figures/TODO_clustering.png}
-%     \caption{Distance-based clustering segments raw LiDAR points into distinct objects based on a maximum break distance.}
-%     \label{fig:clustering}
-% \end{figure}
+\begin{figure}[htpb]
+    \centering
+    \begin{tikzpicture}[
+        scale=1.6,
+        >=stealth,
+        point/.style={circle, draw=black, fill=black, inner sep=0pt, minimum size=3.5pt},
+        ray/.style={gray!50, thin, dashed},
+        highlight_c1/.style={line width=14pt, color=blue, opacity=0.2, line cap=round, line join=round},
+        highlight_c2/.style={line width=14pt, color=green, opacity=0.2, line cap=round, line join=round},
+        highlight_c3/.style={line width=14pt, color=orange, opacity=0.2, line cap=round, line join=round},
+        cluster_label/.style={font=\sffamily\small\bfseries, align=center},
+        annotation/.style={font=\sffamily\footnotesize}
+    ]
+
+    \coordinate (O) at (0, 0);
+
+    \coordinate (P1) at (10:4.2);
+    \coordinate (P2) at (15:3.9);
+    \coordinate (P3) at (20:3.6);
+    \coordinate (P4) at (25:3.3);
+
+    \coordinate (P5) at (40:2.8);
+    \coordinate (P6) at (45:2.5);
+    \coordinate (P7) at (50:2.3);
+    \coordinate (P8) at (55:2.2);
+    \coordinate (P9) at (60:2.3);
+    \coordinate (P10) at (65:2.5);
+
+    \coordinate (P11) at (74:4.4);
+
+    \coordinate (P12) at (85:4.0);
+    \coordinate (P13) at (90:4.1);
+    \coordinate (P14) at (95:4.2);
+    \coordinate (P15) at (100:4.3);
+
+    \draw[highlight_c1] (P1) -- (P2) -- (P3) -- (P4);
+    \draw[highlight_c2] (P5) -- (P6) -- (P7) -- (P8) -- (P9) -- (P10);
+    \draw[highlight_c3] (P12) -- (P13) -- (P14) -- (P15);
+
+    \foreach \i in {1,...,10, 12,13,14,15} {
+        \draw[ray] (O) -- (P\i);
+    }
+    \draw[ray, red!40] (O) -- (P11);
+
+    \draw[->, thick, gray] (5:1.2) arc (5:105:1.2);
+    \node[text=gray, font=\sffamily\scriptsize, rotate=40] at (35:1.05) {Scan Direction};
+
+    \node[below=3pt, annotation] at (P4) {$P_i$};
+    \node[below=3pt, annotation] at (P5) {$P_{i+1}$};
+
+    \draw[<->, thick, red] (P4) -- (P5) node[midway, sloped, above=2pt, font=\sffamily\footnotesize\color{red}] {$d > d_{break}$};
+
+    \node[annotation, text=blue!80!black] (d_le) at (25:4.5) {$d \le d_{break}$};
+    \draw[->, blue!80!black, shorten >= 2pt, thin] (d_le) to[bend left=15] (17.5:3.75);
+
+    \draw[<->, thick, red!60, dashed] (P10) -- (P12) node[midway, sloped, below=2pt, font=\sffamily\footnotesize] {Segment Broken};
+
+    \foreach \i in {1,...,10, 12,13,14,15} {
+        \node[point] at (P\i) {};
+    }
+
+    \node[cluster_label, text=blue!70!black] at (10:5.1) {Cluster 1 \\ \normalfont\scriptsize (Line Primitive)};
+    \node[cluster_label, text=green!60!black] at (52.5:1.5) {Cluster 2 \\ \normalfont\scriptsize (Circle Primitive)};
+    \node[cluster_label, text=orange!80!black] at (100:5.1) {Cluster 3 \\ \normalfont\scriptsize (Line Primitive)};
+
+    \fill[black] (O) circle (4pt);
+    \node[below=5pt, font=\sffamily\small] at (O) {LiDAR Sensor};
+
+    \end{tikzpicture}
+    \caption{Abstracting raw 2D LiDAR data into geometric primitives. Successive points separated by a gap larger than the threshold ($d > d_{break}$) are split into distinct clusters. Isolated points are rejected as noise using a median filter, further breaking sequential segments.}
+    \label{fig:clustering}
+\end{figure}
 
 \subsection{Shape Classification}
 \label{subsec:tb-shape-classification}
 
 Clusters must be categorized as linear or circular to apply the correct geometric extraction logic. For clusters with three or more points, a geometric pre-filter~\cite{xavier2005circledetection} is used to evaluate the curvature. A chord vector is drawn between the cluster's endpoints, $P_1$ and $P_3$, and the cross product is used to calculate the perpendicular arc depth to the median point, $P_2$. If this depth is bounded between $10\%$ and $70\%$ of the chord length, the cluster exhibits sufficient convexity to be classified as a circle. Clusters falling outside this range, or clusters exhibiting an excessive maximum internal point-to-point distance, are classified as lines.
 
-% \begin{figure}[htpb]
-%     \centering
-%     \includegraphics[width=0.6\textwidth]{figures/TODO_shape_classification.png}
-%     \caption{Shape classification using the arc depth ratio to differentiate between lines and circles.}
-%     \label{fig:shape_classification}
-% \end{figure}
-
 \subsection{Line Fitting}
 \label{subsec:line-fitting}
 
 Line extraction uses the Split-and-Merge algorithm~\cite{nguyen2005lineextraction}. First, a chord is drawn between the cluster's endpoints. The algorithm calculates the perpendicular distance from every internal point to the chord. If the maximum distance exceeds a predefined threshold, the cluster is split at that peak point into two sub-scans, and the process recurses. The result is a set of distinct linear segments that approximate complex shapes like walls or curbs.
 
-% \begin{figure}[htpb]
-%     \centering
-%     \includegraphics[width=0.7\textwidth]{figures/TODO_split_and_merge.png}
-%     \caption{The Split-and-Merge algorithm recursively breaks LiDAR clusters into linear segments.}
-%     \label{fig:split_and_merge}
-% \end{figure}
-
 \subsection{Circle Fitting}
 \label{subsec:circle-fitting}
 
 For clusters identified as circular obstacles (such as trees or pedestrians), geometric parameters (center and radius) must be extracted. Algebraic methods, such as the circumcenter approach~\cite{xavier2005circledetection}, attempt to find an analytical solution by selecting three points and computing the intersection of their perpendicular bisectors.
-
-% \begin{figure}[htpb]
-%     \centering
-%     \includegraphics[width=0.5\textwidth]{figures/TODO_circle_fitting.png}
-%     \caption{Circle parameter extraction using three-point circumcenter intersection.}
-%     \label{fig:circle_fitting}
-% \end{figure}
 
 While mathematically exact for perfect curves, algebraic fitting frequently fails when applied to 2D LiDAR data. Because LiDAR only senses the front face of an obstacle, the returned points form a shallow arc. For distant or small obstacles, the limited resolution of the scanner causes these arcs to approach a straight line. Furthermore, because the laser beam has a physical width, reflections from the highly angled flanks of cylindrical objects register prematurely. This smearing effect flattens the perceived curve, causing traditional algebraic methods to systematically overestimate the cylinder's diameter by up to $19\%$~\cite{forsman2017bias}.

@@ -46,6 +46,101 @@ While MPC methods generate better trajectories than reactive methods like DWA,
 %~\ref{TODO: image of difference between DWA (multitude of small arrows, one of which is main) and MPC (the whole trajectory ahead plus an arrow)}
 they require more computational power. MPPI, in particular, requires parallel sampling. And while possible to run on CPU with acceptable control frequency, often necessitates a GPU~\cite{app15169114}, making it unsuitable for constrained hardware. Therefore, a CPU-optimized approach like TEB~\cite{rosmann2013sparse} provides a good balance between navigational performance and computational efficiency.
 
+\begin{figure}[htpb]
+    \centering
+    \begin{tikzpicture}[
+        scale=0.9,
+        robot/.style={circle, draw=black, fill=gray!30, thick, minimum size=0.8cm},
+        obstacle/.style={circle, draw=red!80!black, fill=red!30, thick, minimum size=1.2cm},
+        goal/.style={star, star points=5, star point ratio=2.25, draw=orange!80!black, fill=yellow!60, thick, inner sep=1.5pt},
+        vector/.style={-Stealth, thick},
+        dwa_arc/.style={-Stealth, gray, semithick},
+        dwa_best/.style={-Stealth, blue, very thick},
+        mpc_path/.style={darkgray, dashed, thick},
+        mpc_pose/.style={circle, draw=black, fill=gray!20, minimum size=0.4cm, inner sep=0pt},
+        mpc_best/.style={-Stealth, blue, very thick}
+    ]
+
+    % ==========================================
+    % LEFT PANEL: DWA (Dynamic Window Approach)
+    % ==========================================
+    \begin{scope}[shift={(0,0)}]
+        % Title
+        \node[align=center, font=\bfseries] at (0, -1.5) {Reactive Local Planner \\ (e.g., DWA)};
+
+        % Elements
+        \node[goal] (G1) at (0, 5.5) {};
+        \node[above, font=\small] at (G1) {Local Goal};
+        \node[obstacle] (O1) at (0, 2.5) {};
+        \node[circle, draw=red!50, dashed, thick, minimum size=2.0cm] at (O1) {}; % Safety margin
+
+        % Robot
+        \node[robot] (R1) at (0, 0) {};
+        \draw[vector] (0,0) -- (0, 0.6); % Current heading
+
+        % DWA Arcs (Multitude of small arrows)
+        \draw[dwa_arc] (0, 0.4) to[out=90, in=-10] (-2.2, 1.5);
+        \draw[dwa_arc] (0, 0.4) to[out=90, in=-45] (-1.5, 2.5);
+        \draw[dwa_arc] (0, 0.4) to[out=90, in=-70] (-0.8, 3.5);
+        
+        \draw[dwa_arc, red!80!black, thick] (0, 0.4) -- (0, 1.5); % Collision trajectory
+        
+        \draw[dwa_arc] (0, 0.4) to[out=90, in=250] (0.8, 3.5); 
+        \draw[dwa_best] (0, 0.4) to[out=90, in=225] (1.5, 2.5) node[right, font=\footnotesize, text=blue, align=left, xshift=0.1cm, yshift=-0.1cm] {Selected \\ Velocity}; % Shifted main arrow
+        \draw[dwa_arc] (0, 0.4) to[out=90, in=190] (2.2, 1.5);
+
+        % Annotations
+        \node[font=\footnotesize, left=0.2cm, text=gray, align=right] at (-1.5, 2.5) {Candidate \\ Velocities};
+    \end{scope}
+
+    % ==========================================
+    % RIGHT PANEL: MPC (e.g., TEB)
+    % ==========================================
+    \begin{scope}[shift={(7.5,0)}]
+        % Title
+        \node[align=center, font=\bfseries] at (0, -1.5) {Predictive Local Planner \\ (e.g., MPC / TEB)};
+
+        % Elements
+        \node[goal] (G2) at (0, 5.5) {};
+        \node[above, font=\small] at (G2) {Local Goal};
+        \node[obstacle] (O2) at (0, 2.5) {};
+        \node[circle, draw=red!50, dashed, thick, minimum size=2.0cm] at (O2) {}; % Safety margin
+
+        % Robot
+        \node[robot] (R2) at (0, 0) {};
+
+        % Continuous MPC Trajectory path
+        \draw[mpc_path] (0, 0.4) .. controls (0, 1.5) and (1.7, 1.0) .. (1.7, 2.5) .. controls (1.7, 4.0) and (0, 4.0) .. (0, 5.3);
+
+        % Optimized Future Trajectory Poses
+        \node[mpc_pose] (P1) at (0.45, 0.9) {};
+        \node[mpc_pose] (P2) at (1.25, 1.5) {};
+        \node[mpc_pose] (P3) at (1.7, 2.5) {};
+        \node[mpc_pose] (P4) at (1.25, 3.5) {};
+        \node[mpc_pose] (P5) at (0.2, 4.6) {}; % Moved higher along the curve
+        
+        % Headings for future poses
+        \draw[vector, scale=0.7] (P1.center) -- ++(60:0.6);
+        \draw[vector, scale=0.7] (P2.center) -- ++(80:0.6);
+        \draw[vector, scale=0.7] (P3.center) -- ++(90:0.6);
+        \draw[vector, scale=0.7] (P4.center) -- ++(110:0.6);
+        \draw[vector, scale=0.7] (P5.center) -- ++(115:0.6); % Adjusted heading angle for the new position
+
+        % The immediate command (First arrow extracted from trajectory)
+        \draw[mpc_best] (0, 0) -- (0, 0.6) node[left, font=\footnotesize, text=blue, align=right, xshift=-0.1cm, yshift=0.3cm] {Immediate \\ Command};
+        
+        % Annotations
+        \node[font=\footnotesize, right=0.3cm, text=darkgray, align=left] at (1.7, 2.5) {Optimized Future \\ Trajectory Poses};
+    \end{scope}
+
+    % Divider Line
+    \draw[gray!40, thick, dashed] (3.75, -1.8) -- (3.75, 6.2);
+
+    \end{tikzpicture}
+    \caption{Conceptual difference between reactive planning (left) and predictive planning (right).}
+    \label{fig:dwa_vs_mpc}
+\end{figure}
+
 % O.F. До обговорення: наскільки цей огляд "щільний" -- повний та згадує основні підходи, або популярні, або обговорювані в літературі активно?
 % R.H. Додав трішки інформації з surveys та кілька методів глобальної навігації
 
