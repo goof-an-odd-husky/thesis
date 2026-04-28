@@ -166,7 +166,7 @@ To resolve this, a latency compensation mechanism is implemented. Before the nex
 
 \subsubsection{Architectural Limitations of the Local Planner}
 \label{subsubsec:planner-limitations}
-The implemented local planner relies purely on the Timed Elastic Band formulation. This approach is highly efficient for locally deforming a trajectory around nearby static or slow-moving obstacles. However, it lacks an explicit mechanism for global topological replanning when the current corridor becomes completely blocked. Consequently, dynamic obstacles moving perpendicularly across the path can trap the elastic band, leading to a topological deadlock where the optimizer cannot "jump" over the obstacle to a new valid trajectory. Furthermore, the planner does not explicitly predict the future velocity of dynamic agents; obstacles are avoided based primarily on their instantaneous positions. These limitations are explicitly evaluated in Chapter~\ref{chap:experiments}.
+The implemented local planner relies purely on the Timed Elastic Band formulation. This approach is highly efficient for locally deforming a trajectory around nearby static or slow-moving obstacles. However, it lacks an explicit mechanism for global topological replanning when the current corridor becomes completely blocked. Consequently, dynamic obstacles moving perpendicularly across the path can trap the elastic band, leading to a topological deadlock where the optimizer cannot ``jump'' over the obstacle to a new valid trajectory. Furthermore, the planner does not explicitly predict the future velocity of dynamic agents; obstacles are avoided based primarily on their instantaneous positions. These limitations are explicitly evaluated in Chapter~\ref{chap:experiments}.
 
 \subsection{Parameter Selection}
 \label{subsec:parameter-selection}
@@ -239,9 +239,29 @@ A comparative evaluation against the ROS 2 Nav2 stack~\cite{nav2_docs} was initi
 
 Because the core objective of the system is local obstacle avoidance, artificial geometric obstacles were injected into the simulated park environment along the known OSM paths. Dynamic agents (pedestrians) were represented by $0.5\text{ m}$-diameter cylinders, sized to approximate the physical footprint and LiDAR signature of a human and controlled by Gazebo actors.
 
-The evaluation was consolidated into a single, dynamic stress test. The UGV was tasked with navigating a 50-meter segment of the global path that was densely populated with these simulated pedestrians. The actors were scripted to move in repeated linear trajectories strictly perpendicular to the UGV's direction of travel, at randomized walking speeds ranging from $0.1$ to $0.26\text{ m/s}$. 
+The evaluation was consolidated into a single, dynamic stress test. The UGV was tasked with navigating a 50-meter segment of the global path that was densely populated with these simulated pedestrians. The actors were scripted to move in repeated linear trajectories strictly perpendicular to the UGV's direction of travel. 
 
-This specific scenario was engineered to target the known vulnerabilities of the system. Perpendicularly moving obstacles force the TEB local planner into a continuous state of trajectory deformation and test the robustness of the emergency stop safety nets. By simulating uncooperative pedestrians repeatedly cutting across the robot's path, the scenario provides an evaluation of the pipeline's avoidance capabilities and deadlock resilience.
+This specific scenario was engineered to target the known vulnerabilities of the system of sticking to one side of deformation around an obstacle~\cite{rosmann2012teb}. Perpendicularly moving obstacles force the TEB local planner into a continuous state of trajectory deformation and test the robustness of the emergency stop safety nets by simulating uncooperative pedestrians repeatedly cutting across the robot's path.
+
+To guarantee reproducibility, the dynamic obstacle course was generated using a custom Python script. First, real-world geographic coordinates of Stryiskyi Park were converted from WGS84 latitude and longitude into a local East-North-Up (ENU) Cartesian coordinate frame using a WGS84 ellipsoid approximation. Pedestrians were then distributed along a $50$-meter segment of the path.
+
+To simulate the unpredictable nature of crowd navigation, randomized parameters were applied to each actor. The walking speed was sampled uniformly from $0.1$ to $0.26\text{ m/s}$, the lateral walking distance was sampled uniformly from $6.0$ to $9.0\text{ m}$, and the longitudinal spacing between consecutive pedestrians varied from $2.0$ to $6.0\text{ m}$. A fixed random seed ($42$) was utilized during generation to ensure that the exact identical layout and timing of pedestrian motion were loaded for every simulation run. The complete parameters of the test scenario are summarized in Table~\ref{tab:obstacle-course-params}.
+
+\begin{table}[htpb]
+    \centering
+    \caption{Dynamic Obstacle Course Parameters}
+    \label{tab:obstacle-course-params}
+    \begin{tabular}{ll}
+        \hline
+        \textbf{Parameter} & \textbf{Value} \\
+        \hline
+        Course length & 50 m \\
+        Pedestrian spacing & 2.0 -- 6.0 m \\
+        Pedestrian speed & 0.1 -- 0.26 m/s \\
+        Pedestrian walking distance & 6.0 -- 9.0 m \\
+        \hline
+    \end{tabular}
+\end{table}
 
 \subsection{Evaluation Metrics}
 \label{subsec:evaluation-metrics}

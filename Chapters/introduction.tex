@@ -13,7 +13,7 @@ Outdoor navigation introduces significant complexities compared to indoor enviro
 Currently, off-the-shelf software frameworks for autonomous navigation exist, such as the Nav2 stack in ROS~\cite{nav2_docs}. However, modern outdoor systems often rely on resource-intensive sensors (like 3D LiDARs with data rates of millions of points per second, and RGB-D cameras) and complex algorithms (like Visual SLAM~\cite{schmidt2025vislam} and MPPI~\cite{williams2016mppi}).
 % O.F. Оце heavy sensors мене напрягає, зізнаюся -- можуть виникнути питання. Можливо, варто тут більше написати подробиць, окреслити спектр рішень і де Ваше поміж них. Маса-точніст-енергоспоживання-потоки даних etc
 % R.H. Виправив
-These approaches may provide superior accuracy in unstructured environments but demand substantial computational resources, large amounts of RAM (often 4-16 GB), and sometimes GPUs. This increases costs, drains battery life, and is not always possible on simple, low-cost platforms.
+These approaches may provide superior accuracy in unstructured environments but demand substantial computational resources, large amounts of RAM (often $4 -- 16$ GB), and sometimes GPUs. This increases costs, drains battery life, and is not always possible on simple, low-cost platforms.
 
 Therefore, there is a strong motivation to investigate the capabilities of a minimal, lightweight sensor suite for navigation. Mitigating the reliance on computationally intensive perception pipelines enables more accessible, cost-effective, and energy-efficient robotic platforms.
 
