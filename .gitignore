@@ -19,3 +19,5 @@
 # Build tool caches
 *.rubbercache
 *.run.xml
+
+svg-inkscape/

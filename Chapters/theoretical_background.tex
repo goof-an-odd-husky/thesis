@@ -7,12 +7,12 @@
 % R.H. Додав, хоча вийшло більше галопом по підпунктах -- не знаю, як краще. Діаграму спробую додати
 This chapter presents the theoretical foundations underlying the proposed lightweight navigation system. The discussion follows the structure of the system itself, moving from low-level sensing to high-level decision-making. Section~\ref{sec:sensor-characteristics} reviews the characteristics and limitations of the minimal sensor suite. Section~\ref{sec:differential-drive} describes the kinodynamic properties of the four-wheeled skid-steer UGV. Section~\ref{sec:hierarchical-navigation} introduces the hierarchical decomposition into global and local planning. Section~\ref{sec:spatial-representation} discusses how the world is represented as a semantic graph and how A* operates on it. Section~\ref{sec:trajectory-optimization} formulates local trajectory generation as a non-linear least-squares problem. Section~\ref{sec:sensor-fusion} describes how heterogeneous, noisy measurements are merged through Kalman filtering. Finally, Section~\ref{sec:geometric-feature-extraction} explains how raw 2D LiDAR scans are abstracted into geometric primitives.
 
-% \begin{figure}[htpb]
-%     \centering
-%     \includegraphics[width=0.9\textwidth]{figures/TODO_system_block_diagram.png}
-%     \caption{Functional data flow of the lightweight navigation architecture, illustrating how sensors feed into EKF, the semantic graph feeds the global planner, and local primitives feed into the TEB trajectory optimizer.}
-%     \label{fig:system_block_diagram}
-% \end{figure}
+\begin{figure}[htpb]
+    \centering
+    \includesvg[width=0.9\textwidth]{figures/architecture.svg}
+    \caption{Functional data flow.}
+    \label{fig:system_block_diagram}
+\end{figure}
 
 Together, these components form a pipeline in which each layer reduces the volume of raw data passed to the next: raw LiDAR scans are abstracted into a compact set of geometric primitives, multi-sensor streams are fused into a single pose estimate, and a global graph containing thousands of nodes is compressed into a short sliding window of waypoints for the optimizer.
 
@@ -87,12 +87,12 @@ GPS sensors output data in geodetic coordinates (latitude, longitude, altitude).
 % R.H. Спробував деталізувати, що бачив
 For a global planner to generate paths, the environment is abstracted into a directed semantic graph~\cite{hentschel2010osm}. Unlike grid-based maps that represent the world as a dense matrix of occupied or free cells, a semantic graph explicitly models the topology and attributes of the environment. Vertices represent discrete spatial coordinates (such as path intersections), while edges represent the physical paths connecting them. The semantic nature of the graph means each edge contains metadata (such as surface type or access restrictions). This allows the system to mathematically prune non-navigable edges -- such as unpaved terrain -- before routing begins. For the remaining valid edges, complex paths made of multiple physical segments are simplified into single edges connecting these intersections. The edge weight for such paths is defined as the sum of its underlying segment lengths. This preserves metric distance accuracy while drastically reducing the number of vertices the planning algorithm must evaluate.
 
-% \begin{figure}[htpb]
-%     \centering
-%     \includegraphics[width=0.7\textwidth]{figures/TODO_map_to_graph.png}
-%     \caption{Abstraction of a physical map into a directed semantic graph for routing.}
-%     \label{fig:map_to_graph}
-% \end{figure}
+\begin{figure}[htpb]
+    \centering
+    \includesvg[width=0.7\textwidth]{figures/park_representation.svg}
+    \caption{Difference between Occupancy Grid and Semantic Map.}
+    \label{fig:map_to_graph}
+\end{figure}
 
 The A* algorithm~\cite{hart1968astar} navigates this graph. It computes a least-cost path by minimizing the function $f(n) = g(n) + h(n)$, where $g(n)$ is the exact accumulated cost from the start vertex to vertex $n$ and $h(n)$ is the estimated heuristic cost from $n$ to the goal. For A* to be guaranteed to return an optimal path with respect to the chosen edge cost, 
 % O.F. Майте совість -- перефразуйте :=) Математично найкоротшу - це як?
@@ -115,12 +115,46 @@ The Timed Elastic Band (TEB) approach~\cite{rosmann2012teb} formulates local nav
 % R.H. Окей, вони "з'єднують" пози. У коді звик, що воно все завжди разом (x, y, theta, dt) :)
 Successive poses are linked by a time interval $\Delta t_i$ (in seconds), representing the duration the robot needs to travel from pose $i$ to pose $i+1$. The trajectory is initially generated as a sequence of points, with $\Delta t_i$ and $\theta$ linearly interpolated.
 
-% \begin{figure}[htpb]
-%     \centering
-%     \includegraphics[width=0.7\textwidth]{figures/TODO_trajectory_representation.png}
-%     \caption{Representation of the local trajectory as a sequence of poses connected by time intervals $\Delta t_i$.}
-%     \label{fig:trajectory_representation}
-% \end{figure}
+\begin{figure}[htpb]
+    \centering
+    \begin{tikzpicture}[
+        scale=1.2,
+        pose/.style={circle, draw=black, fill=gray!20, minimum size=0.6cm, inner sep=0pt},
+        vector/.style={-Stealth, thick},
+        time/.style={font=\small, text=blue!80!black, above, sloped}
+    ]
+
+    \coordinate (P0) at (0, 0);
+    \coordinate (P1) at (2.5, 1);
+    \coordinate (P2) at (5, 0.5);
+    \coordinate (P3) at (7, 2);
+
+    \draw[dashed, gray, thick] (P0) to[out=20, in=200] (P1) to[out=20, in=170] (P2) to[out=-10, in=220] (P3);
+
+    \path (P0) to[out=20, in=200] node[time] {$\Delta t_0$} (P1);
+    \path (P1) to[out=20, in=170] node[time] {$\Delta t_1$} (P2);
+    \path (P2) to[out=-10, in=220] node[time] {$\Delta t_2$} (P3);
+
+    \node[pose] (N0) at (P0) {};
+    \draw[vector] (P0) -- ++(20:0.8) node[right, font=\footnotesize] {$\theta_0$};
+    \node[below=0.15cm] at (P0) {$(x_0, y_0)$};
+
+    \node[pose] (N1) at (P1) {};
+    \draw[vector] (P1) -- ++(20:0.8) node[right, font=\footnotesize] {$\theta_1$};
+    \node[below=0.15cm] at (P1) {$(x_1, y_1)$};
+
+    \node[pose] (N2) at (P2) {};
+    \draw[vector] (P2) -- ++(-10:0.8) node[right, font=\footnotesize] {$\theta_2$};
+    \node[below=0.15cm] at (P2) {$(x_2, y_2)$};
+
+    \node[pose] (N3) at (P3) {};
+    \draw[vector] (P3) -- ++(40:0.8) node[right, font=\footnotesize] {$\theta_3$};
+    \node[below=0.15cm] at (P3) {$(x_3, y_3)$};
+
+    \end{tikzpicture}
+    \caption{Representation of the local trajectory as a sequence of poses $(x_i, y_i, \theta_i)$ connected by time intervals $\Delta t_i$.}
+    \label{fig:trajectory_representation}
+\end{figure}
 
 The trajectory is then deformed based on constraints and obstacles. The problem is framed as a non-linear least-squares optimization. The robot's poses and time intervals act as the parameters being optimized. The physical and spatial constraints act as cost functions, also known as residuals and denoted $R_i$, where each $R_i$ is a scalar function of the trajectory parameters that equals zero when the corresponding constraint is satisfied and grows in magnitude as it is violated. The optimization engine minimizes a weighted sum of the squared residuals. In a least-squares solver, the total cost is defined as $\frac{1}{2} \sum_i R_i^2$. 
 % O.F. Обов'язково додати, що це за R_i! Взагалі, всі використані символи мають бути позначеними.
@@ -160,12 +194,56 @@ Because the displacement vector lies in the $xy$-plane, the cross products reduc
     R_{kin} = \sqrt{w} \cdot \Big[ (\cos\theta_i + \cos\theta_{i+1})\Delta y - (\sin\theta_i + \sin\theta_{i+1})\Delta x \Big].
 \end{equation}
 
-% \begin{figure}[htpb]
-%     \centering
-%     \includegraphics[width=0.6\textwidth]{figures/TODO_kinematic_arc.png}
-%     \caption{The differential-drive kinematic constraint enforces constant curvature between successive configurations.}
-%     \label{fig:kinematic_arc}
-% \end{figure}
+\begin{figure}[htpb]
+    \centering
+    \begin{tikzpicture}[
+        scale=1.2,
+        pose/.style={circle, draw=black, fill=gray!20, minimum size=0.6cm, inner sep=0pt},
+        vector/.style={-Stealth, thick},
+        angle_arc/.style={darkgray, ->, thick},
+        kin_arc/.style={green!60!black, <->, thick}
+    ]
+
+    % Coordinates for the poses
+    \coordinate (P1) at (0, 0);
+    \coordinate (P2) at (7, 2);
+
+    % X-axis reference lines (0 degrees)
+    \draw[darkgray, dashed] (P1) -- ++(3.5, 0) coordinate (X1) node[right, font=\footnotesize] {ref ($0^\circ$)};
+    \draw[darkgray, dashed] (P2) -- ++(3.5, 0) coordinate (X2) node[right, font=\footnotesize] {ref ($0^\circ$)};
+
+    % Displacement Vector (d)
+    \draw[vector] (P1) -- (P2) node[midway, below right, font=\small] {$\mathbf{d}_{i,i+1}$};
+
+    % Extended Displacement Vector at P2 (for angle reference)
+    \draw[dashed, black] (P2) -- ++(15.945:3.2);
+
+    % The Kinematic Arc (Constant Curvature Path)
+    \draw[thick, blue, dashed] (P1) to[out=50.945, in=160.945] node[midway, above, xshift=40pt, yshift=8pt, font=\small] {Constant Curvature Arc} (P2);
+
+    % Heading Vectors
+    \draw[vector, red] (P1) -- ++(50.945:3) coordinate (H1) node[above] {Heading $\theta_i$};
+    \draw[vector, red] (P2) -- ++(-19.055:3) coordinate (H2) node[right] {Heading $\theta_{i+1}$};
+
+    % Global Heading Angles (\theta)
+    \draw[angle_arc] (P1) ++(1.2, 0) arc (0:50.945:1.2) node[midway, right] {$\theta_i$};
+    \draw[angle_arc] (P2) ++(1.2, 0) arc (0:-19.055:1.2) node[midway, right] {$\theta_{i+1}$};
+
+    % Kinematic Constraint Angles (\vartheta)
+    \draw[kin_arc] (P1) ++(15.945:2.4) arc (15.945:50.945:2.4) node[midway, right, xshift=2pt] {$\vartheta_i$};
+    \draw[kin_arc] (P2) ++(-19.055:2.4) arc (-19.055:15.945:2.4) node[midway, right, yshift=-2pt] {$\vartheta_{i+1}$};
+
+    % Draw the Poses on top of everything
+    \node[pose] (N1) at (P1) {};
+    \node[below=0.15cm] at (P1) {Pose $i$};
+
+    \node[pose] (N2) at (P2) {};
+    \node[below=0.15cm] at (P2) {Pose $i+1$};
+
+    \end{tikzpicture}
+    \caption{The differential-drive kinematic constraint enforces constant curvature between successive configurations, requiring the angle $\vartheta_i$ to equal $\vartheta_{i+1}$.}
+    \label{fig:kinematic_arc}
+\end{figure}
 
 \subsection{Dynamics Costs}
 \label{subsec:dynamics-costs}
