@@ -277,7 +277,9 @@ The following quantitative metrics were recorded:
     \item \textbf{Travel Time (s):} The average time required to complete successful runs, reflecting the delay introduced by dynamic avoidance and safety stops.
 \end{itemize}
 
-Because the work prioritizes computational accessibility, system telemetry was logged to measure resource efficiency:
+Because the evaluation relies on a discrete number of Bernoulli trials (success or failure), the true success rate is estimated using a 95\% Wilson score interval, which remains accurate for highly skewed proportions and small sample sizes.
+
+The work prioritizes computational accessibility, therefore system telemetry was logged to measure resource efficiency:
 \begin{itemize}
     \item \textbf{Control Frequency (Hz):} The actual rate at which the TEB optimizer generated and published velocity commands, measured directly inside the controller node.
     \item \textbf{CPU Utilization (\%) and Memory Footprint (MB):} System-level process metrics captured at 1 Hz intervals using the Python \texttt{psutil} library~\cite{psutil}.
