@@ -42,9 +42,7 @@ The Timed Elastic Band (TEB) algorithm~\cite{rosmann2012teb} extends this idea u
 
 More recently, sampling-based MPC algorithms, such as Model Predictive Path Integral Control (MPPI), have been introduced for aggressive driving~\cite{williams2016mppi}. Due to its performance, Nav2 has adopted MPPI as one of its advanced trajectory controllers alongside the DWB-based planners.
 
-While MPC methods generate better trajectories than reactive methods like DWA,
-%~\ref{TODO: image of difference between DWA (multitude of small arrows, one of which is main) and MPC (the whole trajectory ahead plus an arrow)}
-they require more computational power. MPPI, in particular, requires parallel sampling. And while possible to run on CPU with acceptable control frequency, often necessitates a GPU~\cite{app15169114}, making it unsuitable for constrained hardware. Therefore, a CPU-optimized approach like TEB~\cite{rosmann2013sparse} provides a good balance between navigational performance and computational efficiency.
+While MPC methods generate better trajectories than reactive methods like DWA (as conceptually illustrated in Figure~\ref{fig:dwa_vs_mpc}, where DWA evaluates an immediate multitude of velocity arcs versus MPC optimizing an entire continuous trajectory of future poses), they require more computational power. MPPI, in particular, requires parallel sampling. And while possible to run on CPU with acceptable control frequency, often necessitates a GPU~\cite{app15169114}, making it unsuitable for constrained hardware. Therefore, a CPU-optimized approach like TEB~\cite{rosmann2013sparse} provides a good balance between navigational performance and computational efficiency.
 
 \begin{figure}[htpb]
     \centering

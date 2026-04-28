@@ -19,7 +19,7 @@ The core constraint of this implementation is achieving reliable obstacle avoida
 \section{Hardware and Environment Setup}
 \label{sec:hardware-setup}
 
-The experimental subject of this research is the Clearpath Husky A200~\cite{clearpath_husky}, a medium-sized UGV. The Husky is a rugged, four-wheeled skid-steer platform designed for research applications. It has a physical footprint of $99 \times 67 \times 39 \text{ cm}$, weighing approximately $50 \text{ kg}$.
+The experimental subject of this research, shown in Figure~\ref{fig:husky_robot}, is the Clearpath Husky A200~\cite{clearpath_husky}, a medium-sized UGV. The Husky is a rugged, four-wheeled skid-steer platform designed for research applications. It has a physical footprint of $99 \times 67 \times 39 \text{ cm}$, weighing approximately $50 \text{ kg}$.
 
 % O.F. Додайте фото Хаскі :=) Можна в міру кумедне, але без людей зверху
 \begin{figure}[htpb]
@@ -90,9 +90,7 @@ Clusters with fewer than three points are automatically classified as circles. F
 
 \subsubsection{Primitives Extraction}
 \label{subsubsec:impl-primitives}
-To ensure stability against sensor noise and bias introduced with algebraic curvature methods of circle extraction, a spatial heuristic is used. The maximum Euclidean distance between any two points in the cluster (the chord width) establishes an initial diameter estimate. To counteract sensor noise and the systematic cylinder overestimation identified by Forsman et al.~\cite{forsman2017bias}, the radius (half diameter) is clamped between predefined physical minimum and maximum bounds. Instead of calculating a mathematical center from the arc, the visible middle point of the cluster is projected outward from the sensor origin by the estimated radius to approximate the true geometric centroid. Finally, the radius is expanded, so that all points in the cluster are enclosed. This method mitigates overestimations while implicitly providing a safety margin. 
-% TODO: ref image.
-Clusters classified as lines are processed using the recursive Split-and-Merge algorithm to yield distinct linear segments, as detailed in Section~\ref{subsec:line-fitting}.
+To ensure stability against sensor noise and bias introduced with algebraic curvature methods of circle extraction, a spatial heuristic was developed, illustrated in Figure~\ref{fig:circle_extraction}. The maximum Euclidean distance between any two points in the cluster (the chord width) establishes an initial diameter estimate. To counteract sensor noise and the systematic cylinder overestimation identified by Forsman et al.~\cite{forsman2017bias}, the radius (half diameter) is clamped between predefined physical minimum and maximum bounds. Instead of calculating a mathematical center from the arc, the visible middle point of the cluster is projected outward from the sensor origin by the estimated radius to approximate the true geometric centroid. Finally, the radius is expanded, so that all points in the cluster are enclosed. This method mitigates overestimations while implicitly providing a safety margin. Clusters classified as lines are processed using the recursive Split-and-Merge algorithm to yield distinct linear segments, as detailed in Section~\ref{subsec:line-fitting}.
 
 \begin{figure}[htpb]
     \centering
@@ -158,7 +156,8 @@ To restrict the UGV to the pedestrian path, virtual line obstacles are generated
 An Extended Kalman Filter, described in Section~\ref{sec:sensor-fusion}, is implemented via the \texttt{robot\_localization} ROS 2 package. The EKF is configured to fuse data from the internal IMU and wheel encoders for continuous state estimation. It is used for the trajectory updates, so as not to introduce sudden shifts for the TEB local planner.
 
 Another EKF is used to take into account low-frequency GPS data. It is projected onto a local Cartesian tangent plane and fused to reduce the drift. This second filter's output is used to update the direction toward the target, ensuring the vehicle reaches the exact destination.
-% TODO: ref the image where the EKF relationship is shown
+
+As previously illustrated in the functional block diagram in Figure~\ref{fig:system_block_diagram}, the first EKF (EKF1) handles the continuous wheel odometry and IMU fusion, while the second one (EKF2) incorporates the absolute GPS data atop the EKF1 baseline.
 
 In fallback scenarios where GPS is disabled or unavailable, the direction to the global goal is only updated using the first filter, which uses IMU and wheel odometry.
 

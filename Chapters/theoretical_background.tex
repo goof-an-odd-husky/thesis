@@ -7,6 +7,8 @@
 % R.H. Додав, хоча вийшло більше галопом по підпунктах -- не знаю, як краще. Діаграму спробую додати
 This chapter presents the theoretical foundations underlying the proposed lightweight navigation system. The discussion follows the structure of the system itself, moving from low-level sensing to high-level decision-making. Section~\ref{sec:sensor-characteristics} reviews the characteristics and limitations of the minimal sensor suite. Section~\ref{sec:differential-drive} describes the kinodynamic properties of the four-wheeled skid-steer UGV. Section~\ref{sec:hierarchical-navigation} introduces the hierarchical decomposition into global and local planning. Section~\ref{sec:spatial-representation} discusses how the world is represented as a semantic graph and how A* operates on it. Section~\ref{sec:trajectory-optimization} formulates local trajectory generation as a non-linear least-squares problem. Section~\ref{sec:sensor-fusion} describes how heterogeneous, noisy measurements are merged through Kalman filtering. Finally, Section~\ref{sec:geometric-feature-extraction} explains how raw 2D LiDAR scans are abstracted into geometric primitives.
 
+The functional data flow of this entire pipeline is illustrated in Figure~\ref{fig:system_block_diagram}. As shown, raw inputs (OSM, 2D LiDAR, and state sensors) are independently compressed into high-level abstractions—such as sparse graphs, geometric clusters, and dual-EKF pose estimates—before converging at the local trajectory optimizer.
+
 \begin{figure}[htpb]
     \centering
     \includesvg[width=0.9\textwidth]{figures/architecture.svg}
@@ -85,7 +87,7 @@ GPS sensors output data in geodetic coordinates (latitude, longitude, altitude).
 
 % O.F. Тут таких, принаймні -- мені неочевидних, надмірних узагальнень теж трохи є, але вже не деталізувати
 % R.H. Спробував деталізувати, що бачив
-For a global planner to generate paths, the environment is abstracted into a directed semantic graph~\cite{hentschel2010osm}. Unlike grid-based maps that represent the world as a dense matrix of occupied or free cells, a semantic graph explicitly models the topology and attributes of the environment. Vertices represent discrete spatial coordinates (such as path intersections), while edges represent the physical paths connecting them. The semantic nature of the graph means each edge contains metadata (such as surface type or access restrictions). This allows the system to mathematically prune non-navigable edges -- such as unpaved terrain -- before routing begins. For the remaining valid edges, complex paths made of multiple physical segments are simplified into single edges connecting these intersections. The edge weight for such paths is defined as the sum of its underlying segment lengths. This preserves metric distance accuracy while drastically reducing the number of vertices the planning algorithm must evaluate.
+For a global planner to generate paths, the environment is abstracted into a directed semantic graph~\cite{hentschel2010osm}. Unlike grid-based maps that represent the world as a dense matrix of occupied or free cells, a semantic graph explicitly models the topology and attributes of the environment. Vertices represent discrete spatial coordinates (such as path intersections), while edges represent the physical paths connecting them. The semantic nature of the graph means each edge contains metadata (such as surface type or access restrictions). This allows the system to mathematically prune non-navigable edges -- such as unpaved terrain -- before routing begins. For the remaining valid edges, complex paths made of multiple physical segments are simplified into single edges connecting these intersections. The edge weight for such paths is defined as the sum of its underlying segment lengths. This preserves metric distance accuracy while drastically reducing the number of vertices the planning algorithm must evaluate. A visual comparison of this abstraction is provided in Figure~\ref{fig:map_to_graph}, contrasting a dense, cell-based occupancy grid with a sparse, node-and-edge semantic representation.
 
 \begin{figure}[htpb]
     \centering
@@ -113,7 +115,7 @@ By prioritizing nodes with lower $f(n)$ values, the algorithm preferentially exp
 The Timed Elastic Band (TEB) approach~\cite{rosmann2012teb} formulates local navigation as a multi-objective optimization problem with a receding-horizon strategy. At each control step, the algorithm predicts a short-term trajectory over a finite time window, applies the first generated control command, and continuously re-optimizes the trajectory as new sensor data arrives. The trajectory itself is defined as a sequence of intermediate poses between the start and goal. Each pose consists of $x, y$ coordinates (in meters) and a heading angle $\theta$ (in radians). 
 % O.F. \Delta t як частина пози?! Та ну :=)
 % R.H. Окей, вони "з'єднують" пози. У коді звик, що воно все завжди разом (x, y, theta, dt) :)
-Successive poses are linked by a time interval $\Delta t_i$ (in seconds), representing the duration the robot needs to travel from pose $i$ to pose $i+1$. The trajectory is initially generated as a sequence of points, with $\Delta t_i$ and $\theta$ linearly interpolated.
+Successive poses are linked by a time interval $\Delta t_i$ (in seconds), representing the duration the robot needs to travel from pose $i$ to pose $i+1$. The trajectory is initially generated as a sequence of points, with $\Delta t_i$ and $\theta$ linearly interpolated. This sequence of discrete poses and time intervals is visualized in Figure~\ref{fig:trajectory_representation}.
 
 \begin{figure}[htpb]
     \centering
@@ -185,7 +187,7 @@ The residual is zero whenever the segment is sufficiently far from the obstacle,
 
 \subsection{Kinematic Cost}
 \label{subsec:kinematic-cost}
-To enforce the differential-drive constraint, the robot's motion between two configurations $i$ and $i+1$ is modeled as an arc segment of constant curvature~\cite{rosmann2012teb}. This requires the angle $\vartheta_{i}$ between the robot's heading at pose $i$ and the displacement vector $\mathbf{d}_{i,i+1} = (\Delta x, \Delta y)^\top$ to be equal to the corresponding angle $\vartheta_{i+1}$ at pose $i+1$. Rather than optimizing these angles directly, the constraint is formulated as a cross product:
+To enforce the differential-drive constraint, the robot's motion between two configurations $i$ and $i+1$ is modeled as an arc segment of constant curvature~\cite{rosmann2012teb}. This requires the angle $\vartheta_{i}$ between the robot's heading at pose $i$ and the displacement vector $\mathbf{d}_{i,i+1} = (\Delta x, \Delta y)^\top$ to be equal to the corresponding angle $\vartheta_{i+1}$ at pose $i+1$, as shown in Figure~\ref{fig:kinematic_arc}. Rather than optimizing these angles directly, the constraint is formulated as a cross product:
 \begin{equation}
     \begin{pmatrix} \cos \theta_i \\ \sin \theta_i \\ 0 \end{pmatrix} \times \mathbf{d}_{i,i+1} = \mathbf{d}_{i,i+1} \times \begin{pmatrix} \cos \theta_{i+1} \\ \sin \theta_{i+1} \\ 0 \end{pmatrix}.
 \end{equation}
@@ -318,7 +320,7 @@ A practical advantage of this fusion scheme is graceful degradation: if a sensor
 \subsection{Pre-processing and Clustering}
 \label{subsec:tb-preprocessing}
 
-Raw LiDAR scans frequently contain isolated noise spikes and artifacts. Therefore, the points are first passed through a median filter to reject extreme outliers. The filtered point clouds are then grouped into discrete clusters using distance-based segmentation~\cite{nguyen2005lineextraction}. Points are assigned to a single sequential object if the Euclidean distance between consecutive measurements $P_i$ and $P_{i+1}$ is below a defined break distance. The vehicle diameter, with some padding, can serve as an effective threshold, as narrower gaps would not be passable by the robot.
+Raw LiDAR scans frequently contain isolated noise spikes and artifacts. Therefore, the points are first passed through a median filter to reject extreme outliers. The filtered point clouds are then grouped into discrete clusters using distance-based segmentation~\cite{nguyen2005lineextraction}. Points are assigned to a single sequential object if the Euclidean distance between consecutive measurements $P_i$ and $P_{i+1}$ is below a defined break distance. The vehicle diameter, with some padding, can serve as an effective threshold, as narrower gaps would not be passable by the robot. The mechanics of this distance-based segmentation, along with outlier filtering, are visualized in Figure~\ref{fig:clustering}.
 
 \begin{figure}[htpb]
     \centering
