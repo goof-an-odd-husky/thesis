@@ -70,7 +70,7 @@ This decomposition is motivated by several factors. First, the navigation task i
 For these reasons, the classical two-level decomposition is adopted in this work. The global planner operates on a static map to find a route to the destination. Although such a route is geometric in nature -- it consists of waypoints with metric coordinates and edge lengths -- it is computed without considering the vehicle's instantaneous kinematics or transient dynamic obstacles, and is in that sense closer to a topological plan than to an executable trajectory.
 % O.F. Геометрія не враховується, тільки топологія?
 % R.H. Тепер враховується
-The local planner then acts upon a small sliding window of this global route, functioning in real time and generating motion commands that respect kinodynamic limits and avoid immediate, dynamic, or previously unobserved obstacles.
+The local planning stage is often further subdivided into geometric path finding and kinodynamic optimization. First, an intermediate geometric path is dynamically routed around newly perceived obstacles using a discrete search (e.g., A* on a visibility graph). Second, a trajectory optimizer (e.g., TEB) translates this collision-free geometric path into executable motion commands that respect the vehicle's kinodynamic limits in real time.
 
 \section{Spatial Representation}
 \label{sec:spatial-representation}
@@ -206,7 +206,7 @@ To solve this objective, optimization engines require Jacobians -- matrices of p
 
 \subsection{Temporal Coherence}
 \label{subsec:temporal-coherence}
-If an optimizer starts from a blank slate (a cold start) at every control step, it may fail to converge within strict time limits and produce inconsistent trajectories. MPC-style approaches, including TEB, solve this by utilizing a Warm Start~\cite{rosmann2013sparse}. Because the environment changes only slightly between control frames, the optimized trajectory from the previous time step can be preserved and used as the initial guess for the next iteration. This temporal coherence reduces the number of iterations required for the solver to find a local minimum.
+If an optimizer starts from a blank slate (a cold start) at every control step, it may fail to converge within strict time limits and produce inconsistent trajectories. MPC-style approaches, including TEB, solve this by utilizing a Warm Start~\cite{rosmann2013sparse}. Because the environment changes only slightly between control frames, the optimized trajectory from the previous time step can be preserved and used as the initial guess for the next iteration. This temporal coherence reduces the number of iterations required for the solver to find a local minimum. However, if a dynamic obstacle moves directly across the optimized trajectory, the warm start becomes invalid. In such cases, the system must perform a ``cold start,'' re-initializing the optimizer with a newly generated geometric path that routes around the obstruction.
 
 \section{Sensor Fusion}
 \label{sec:sensor-fusion}

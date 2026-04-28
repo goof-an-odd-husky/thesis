@@ -39,7 +39,7 @@ The primary objective of this thesis is to design, implement, and evaluate a res
 \begin{itemize}
 \item Develop global path planning using the A* search algorithm on an OpenStreetMap environment graph.
 \item Design obstacle detection by processing 2D LiDAR data to extract and classify geometric primitives (lines and circles).
-\item Implement local navigation by combining spatial localization (via an Extended Kalman Filter fusing GPS, IMU, and wheel odometry) with Timed Elastic Band trajectory optimization to follow the global path while avoiding obstacles.
+\item Implement local navigation by combining spatial localization (via an Extended Kalman Filter) with a hybrid planner: a dynamic visibility-graph A* search for initial collision-free pathing, followed by Timed Elastic Band (TEB) optimization for kinodynamic trajectory execution.
 \end{itemize}
 
 The system was validated in a simulated environment, with performance evaluated based on success rate, safety margins, and travel time.
