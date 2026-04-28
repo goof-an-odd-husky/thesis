@@ -526,3 +526,12 @@ ISSN = {2076-3417},
 ABSTRACT = {Unmanned Aerial Vehicles (UAVs) operating in complex environments require advanced control strategies beyond traditional linear approaches. This work presents a comprehensive comparative analysis of Nonlinear Model Predictive Control (NMPC) and Model Predictive Path Integral (MPPI) control for UAV trajectory tracking, with an emphasis on real-time implementation feasibility on embedded hardware. A modular ROS 2 framework enables runtime controller selection using CasADi/Acados for NMPC and JAX for MPPI implementations. Processor-in-the-Loop experiments on NVIDIA Jetson Orin Nano hardware evaluate computational performance under realistic resource constraints. Results demonstrate that MPPI achieves superior tracking performance, with an 18.6% improvement in overall RMSE compared to NMPC (0.8480 m to 0.6897 m) for trajectory following. Both controllers achieve real-time performance on embedded hardware, with GPU acceleration proving critical for MPPI success, enabling a 17.63 ms median computation time versus 31.02 ms for CPU-only execution. Systematic parameter analysis reveals optimal MPPI configurations of 40 horizon steps and 800–1250 samples for balancing performance with computational constraints imposed by the 50 Hz (20 ms) control frequency inherent to PX4 hardware compliance. This study validates that mainstream computational frameworks can deliver satisfactory real-time control performance on standard robotics hardware, significantly enhancing accessibility for practical UAV deployment while providing clear guidelines for control strategy selection in resource-constrained applications.},
 DOI = {10.3390/app15169114}
 }
+
+@misc{psutil,
+  author = {Giampaolo Rodola},
+  title = {psutil: Cross-platform lib for process and system monitoring in Python},
+  year = {2024},
+  publisher = {GitHub},
+  journal = {GitHub repository},
+  howpublished = {\url{https://github.com/giampaolo/psutil}}
+}
