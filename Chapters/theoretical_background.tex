@@ -206,36 +206,27 @@ Because the displacement vector lies in the $xy$-plane, the cross products reduc
         kin_arc/.style={green!60!black, <->, thick}
     ]
 
-    % Coordinates for the poses
     \coordinate (P1) at (0, 0);
     \coordinate (P2) at (7, 2);
 
-    % X-axis reference lines (0 degrees)
     \draw[darkgray, dashed] (P1) -- ++(3.5, 0) coordinate (X1) node[right, font=\footnotesize] {ref ($0^\circ$)};
     \draw[darkgray, dashed] (P2) -- ++(3.5, 0) coordinate (X2) node[right, font=\footnotesize] {ref ($0^\circ$)};
 
-    % Displacement Vector (d)
     \draw[vector] (P1) -- (P2) node[midway, below right, font=\small] {$\mathbf{d}_{i,i+1}$};
 
-    % Extended Displacement Vector at P2 (for angle reference)
     \draw[dashed, black] (P2) -- ++(15.945:3.2);
 
-    % The Kinematic Arc (Constant Curvature Path)
     \draw[thick, blue, dashed] (P1) to[out=50.945, in=160.945] node[midway, above, xshift=40pt, yshift=8pt, font=\small] {Constant Curvature Arc} (P2);
 
-    % Heading Vectors
     \draw[vector, red] (P1) -- ++(50.945:3) coordinate (H1) node[above] {Heading $\theta_i$};
     \draw[vector, red] (P2) -- ++(-19.055:3) coordinate (H2) node[right] {Heading $\theta_{i+1}$};
 
-    % Global Heading Angles (\theta)
     \draw[angle_arc] (P1) ++(1.2, 0) arc (0:50.945:1.2) node[midway, right] {$\theta_i$};
     \draw[angle_arc] (P2) ++(1.2, 0) arc (0:-19.055:1.2) node[midway, right] {$\theta_{i+1}$};
 
-    % Kinematic Constraint Angles (\vartheta)
     \draw[kin_arc] (P1) ++(15.945:2.4) arc (15.945:50.945:2.4) node[midway, right, xshift=2pt] {$\vartheta_i$};
     \draw[kin_arc] (P2) ++(-19.055:2.4) arc (-19.055:15.945:2.4) node[midway, right, yshift=-2pt] {$\vartheta_{i+1}$};
 
-    % Draw the Poses on top of everything
     \node[pose] (N1) at (P1) {};
     \node[below=0.15cm] at (P1) {Pose $i$};
 
@@ -291,7 +282,8 @@ If an optimizer starts from a blank slate (a cold start) at every control step, 
 \section{Sensor Fusion}
 \label{sec:sensor-fusion}
 
-Raw sensor measurements are inherently corrupted by noise and specific inaccuracies. As described in Section~\ref{sec:sensor-characteristics}, wheel odometry accumulates drift from mechanical slippage, IMU measurements integrate into unbounded error~\cite{woodman2007inertial,moore2015ekf}, and GPS receivers provide absolute global coordinates but suffer from high-frequency noise, signal obstruction, and multipath effects~\cite{schmidt2025vislam}. No single sensor in the minimal suite is sufficient on its own; combining them through probabilistic state estimation allows their complementary strengths to compensate for individual weaknesses. % O.F. Ось тут може й можна вже лишити так, на прикладах, про GPS...
+Raw sensor measurements are inherently corrupted by noise and specific inaccuracies. As described in Section~\ref{sec:sensor-characteristics}, wheel odometry accumulates drift from mechanical slippage, IMU measurements integrate into unbounded error~\cite{woodman2007inertial,moore2015ekf}, and GPS receivers provide absolute global coordinates but suffer from high-frequency noise, signal obstruction, and multipath effects~\cite{schmidt2025vislam}. No single sensor in the minimal suite is sufficient on its own; combining them through probabilistic state estimation allows their complementary strengths to compensate for individual weaknesses.
+% O.F. Ось тут може й можна вже лишити так, на прикладах, про GPS...
 
 % O.F. Воно б мені пасувало фільтри Калмана винести в окремий підрозді і більше про них написати -- щоб читачі розуміли, що Ви їх розумієте.
 % R.H. Прийнято. Хоча супер докладно розказувати -- не зовсім для мене, бо я і так готову лібу використовую

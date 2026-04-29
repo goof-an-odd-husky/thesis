@@ -59,79 +59,59 @@ While MPC methods generate better trajectories than reactive methods like DWA (a
         mpc_best/.style={-Stealth, blue, very thick}
     ]
 
-    % ==========================================
-    % LEFT PANEL: DWA (Dynamic Window Approach)
-    % ==========================================
     \begin{scope}[shift={(0,0)}]
-        % Title
         \node[align=center, font=\bfseries] at (0, -1.5) {Reactive Local Planner \\ (e.g., DWA)};
 
-        % Elements
         \node[goal] (G1) at (0, 5.5) {};
         \node[above, font=\small] at (G1) {Local Goal};
         \node[obstacle] (O1) at (0, 2.5) {};
-        \node[circle, draw=red!50, dashed, thick, minimum size=2.0cm] at (O1) {}; % Safety margin
+        \node[circle, draw=red!50, dashed, thick, minimum size=2.0cm] at (O1) {};
 
-        % Robot
         \node[robot] (R1) at (0, 0) {};
-        \draw[vector] (0,0) -- (0, 0.6); % Current heading
+        \draw[vector] (0,0) -- (0, 0.6);
 
-        % DWA Arcs (Multitude of small arrows)
         \draw[dwa_arc] (0, 0.4) to[out=90, in=-10] (-2.2, 1.5);
         \draw[dwa_arc] (0, 0.4) to[out=90, in=-45] (-1.5, 2.5);
         \draw[dwa_arc] (0, 0.4) to[out=90, in=-70] (-0.8, 3.5);
         
-        \draw[dwa_arc, red!80!black, thick] (0, 0.4) -- (0, 1.5); % Collision trajectory
+        \draw[dwa_arc, red!80!black, thick] (0, 0.4) -- (0, 1.5);
         
         \draw[dwa_arc] (0, 0.4) to[out=90, in=250] (0.8, 3.5); 
-        \draw[dwa_best] (0, 0.4) to[out=90, in=225] (1.5, 2.5) node[right, font=\footnotesize, text=blue, align=left, xshift=0.1cm, yshift=-0.1cm] {Selected \\ Velocity}; % Shifted main arrow
+        \draw[dwa_best] (0, 0.4) to[out=90, in=225] (1.5, 2.5) node[right, font=\footnotesize, text=blue, align=left, xshift=0.1cm, yshift=-0.1cm] {Selected \\ Velocity};
         \draw[dwa_arc] (0, 0.4) to[out=90, in=190] (2.2, 1.5);
 
-        % Annotations
         \node[font=\footnotesize, left=0.2cm, text=gray, align=right] at (-1.5, 2.5) {Candidate \\ Velocities};
     \end{scope}
 
-    % ==========================================
-    % RIGHT PANEL: MPC (e.g., TEB)
-    % ==========================================
     \begin{scope}[shift={(7.5,0)}]
-        % Title
         \node[align=center, font=\bfseries] at (0, -1.5) {Predictive Local Planner \\ (e.g., MPC / TEB)};
 
-        % Elements
         \node[goal] (G2) at (0, 5.5) {};
         \node[above, font=\small] at (G2) {Local Goal};
         \node[obstacle] (O2) at (0, 2.5) {};
-        \node[circle, draw=red!50, dashed, thick, minimum size=2.0cm] at (O2) {}; % Safety margin
+        \node[circle, draw=red!50, dashed, thick, minimum size=2.0cm] at (O2) {};
 
-        % Robot
         \node[robot] (R2) at (0, 0) {};
 
-        % Continuous MPC Trajectory path
         \draw[mpc_path] (0, 0.4) .. controls (0, 1.5) and (1.7, 1.0) .. (1.7, 2.5) .. controls (1.7, 4.0) and (0, 4.0) .. (0, 5.3);
 
-        % Optimized Future Trajectory Poses
         \node[mpc_pose] (P1) at (0.45, 0.9) {};
         \node[mpc_pose] (P2) at (1.25, 1.5) {};
         \node[mpc_pose] (P3) at (1.7, 2.5) {};
         \node[mpc_pose] (P4) at (1.25, 3.5) {};
-        \node[mpc_pose] (P5) at (0.2, 4.6) {}; % Moved higher along the curve
+        \node[mpc_pose] (P5) at (0.2, 4.6) {};
         
-        % Headings for future poses
         \draw[vector, scale=0.7] (P1.center) -- ++(60:0.6);
         \draw[vector, scale=0.7] (P2.center) -- ++(80:0.6);
         \draw[vector, scale=0.7] (P3.center) -- ++(90:0.6);
         \draw[vector, scale=0.7] (P4.center) -- ++(110:0.6);
-        \draw[vector, scale=0.7] (P5.center) -- ++(115:0.6); % Adjusted heading angle for the new position
+        \draw[vector, scale=0.7] (P5.center) -- ++(115:0.6);
 
-        % The immediate command (First arrow extracted from trajectory)
         \draw[mpc_best] (0, 0) -- (0, 0.6) node[left, font=\footnotesize, text=blue, align=right, xshift=-0.1cm, yshift=0.3cm] {Immediate \\ Command};
         
-        % Annotations
         \node[font=\footnotesize, right=0.3cm, text=darkgray, align=left] at (1.7, 2.5) {Optimized Future \\ Trajectory Poses};
     \end{scope}
 
-    % Divider Line
     \draw[gray!40, thick, dashed] (3.75, -1.8) -- (3.75, 6.2);
 
     \end{tikzpicture}
@@ -181,7 +161,7 @@ Using a 2D LiDAR removes the need to reason about the vertical structure of the 
 % R.H. Уточнив
 While simpler ultrasonic sensors exist, they struggle with angled surfaces and lack precise direction~\cite{borenstein1988ultrasonic}. To optimize 2D LiDAR processing, point clouds are often abstracted into geometric primitives. Catapang and Ramos~\cite{catapang2016lidar} and Nguyen et al.~\cite{nguyen2005lineextraction} grouped points within a specific distance into clusters. To extract shapes, Sezer and Gokasan~\cite{sezer2012follow} used circle approximations. For line extraction, Nguyen et al.~\cite{nguyen2005lineextraction} compared several common line-extraction algorithms and reported that ``Split and Merge'' provided the most efficient method for converting raw LiDAR points into lines, while still being very accurate, which has made it a common choice in subsequent work.
 % O.F. Автори так категорично і формулюють? Якщо ні -- варто пом'якшити і тут :=)
-% Автори так і казали, що найшвидший і ефективний; по таблиці результатів також видно
+% R.H. Автори так і казали, що найшвидший і ефективний; по таблиці результатів також видно
 
 Dealing with dynamic agents like pedestrians is another challenge. While some approaches treat pedestrians differently from static obstacles, they often rely on heavy Reinforcement Learning and 3D tracking~\cite{du2019groupsurfing}, which conflicts with computational efficiency. However, Arras et al.~\cite{arras2007people} demonstrated that detecting dynamic agents in 2D range data is possible using only static geometric features.
 
@@ -189,7 +169,45 @@ To further optimize feature detection, Xavier et al.~\cite{xavier2005circledetec
 % O.F. Тут теж мене власне конкретні мілісекунди напрягають -- бо від заліза і конкретних умова мало б сильно залежати...
 % R.H. Узагальнив
 
-\section{Conclusion}
-\label{sec:rw-conclusion}
+\section{Conclusions}
+\label{sec:rw-conclusions}
 
-While extensive research has produced a wide array of path planning and obstacle avoidance algorithms, many modern advancements heavily rely on resource-intensive perception and computation, such as 3D LiDARs, MPPI or SLAM. As a result, the performance bounds of minimal, low-cost sensor suites in unpredictable outdoor environments remain underexplored. Based on these limitations, the goal of this research is to build and evaluate a resource-efficient navigation system. By replacing SLAM with semantic OpenStreetMap data, abstracting 2D LiDAR data into geometric obstacles, and combining discrete visibility-graph search with CPU-optimized TEB algorithms, this thesis aims to show that a minimal sensor configuration can demonstrate feasible autonomous navigation in complex outdoor environments.
+As the Table~\ref{tab:rw-taxonomy} illustrates, while extensive research has produced a wide array of high-fidelity algorithms, many modern advancements heavily rely on resource-intensive perception and computation. As a result, the performance bounds of minimal, low-cost sensor suites in unpredictable outdoor environments remain underexplored. 
+
+Based on these trade-offs, the goal of this research is to build and evaluate a resource-efficient navigation system. By replacing SLAM with semantic OpenStreetMap data, abstracting 2D LiDAR data into geometric obstacles, and combining discrete visibility-graph search with CPU-optimized TEB algorithms, this thesis aims to show that the selected minimal configurations can demonstrate feasible autonomous navigation in complex outdoor environments.
+
+\begin{table}[htpb]
+    \centering
+    \caption{Taxonomy of relevant autonomous navigation methodologies and their trade-offs.}
+    \label{tab:rw-taxonomy}
+    \renewcommand{\arraystretch}{1.6}
+    \small
+    \begin{tabular}{>{\raggedright\arraybackslash}p{2.5cm} >{\raggedright\arraybackslash}p{4.0cm} >{\raggedright\arraybackslash}p{5.0cm} >{\raggedright\arraybackslash}p{2.5cm}}
+        \toprule
+        \textbf{Problem Domain} & \textbf{Dominant Paradigms} & \textbf{Key Trade-offs} & \textbf{Adopted Approach} \\
+        \midrule
+        
+        \multirow{3}{2.5cm}{\textbf{Localization} \newline (Sec.~\ref{sec:rw-localization})} 
+        & \textbullet~Dense SLAM (VI/3D) & Highly accurate; but RAM/compute heavy and prone to drift in dynamic foliage. & \\
+        & \textbullet~Infrastructure (UWB/BLE) & Lightweight; but requires pre-installed beacons (infeasible for public parks). & EKF Fusion \newline (GPS + IMU + Odom.) \\
+        & \textbullet~Sensor Fusion (GPS+IMU) & Infrastructure-free and low-compute; but vulnerable to GPS multi-path errors. & \\
+        \midrule
+        
+        \multirow{2}{2.5cm}{\textbf{Global Mapping} \newline (Sec.~\ref{sec:rw-semantic-mapping})} 
+        & \textbullet~Occupancy Grids & High geometric fidelity; but large memory footprint and requires prior exploration. & Semantic Graphs \newline (OpenStreetMap) \\
+        & \textbullet~Semantic Graphs (OSM) & Compact, uses pre-existing data, easy A* routing; but lacks real-time geometric updates. & \\
+        \midrule
+        
+        \multirow{2}{2.5cm}{\textbf{Obstacle Perception} \newline (Sec.~\ref{sec:rw-obstacle-abstraction})} 
+        & \textbullet~3D Point Clouds & Full spatial context; requires heavy ground-filtering and high data bandwidth. & 2D Geometric Primitives \\
+        & \textbullet~2D Feature Abstraction & Drastic data reduction ($O(n)$ complexity); but loses vertical awareness (blind spots). & \\
+        \midrule
+        
+        \multirow{3}{2.5cm}{\textbf{Local Planning} \newline (Sec.~\ref{sec:rw-path-planning})} 
+        & \textbullet~Reactive (e.g., DWA) & Computationally cheap; but short-sighted and struggles in complex local minima. & \multirow{3}{2.5cm}{Predictive \newline (TEB) seeded by topological A*} \\
+        & \textbullet~Sampling MPC (e.g., MPPI) & Aggressive and highly capable; but requires parallelization (often GPU). & \\
+        & \textbullet~Optimization MPC (e.g., TEB) & Evaluates full trajectory, respects kinodynamics, CPU-friendly; but can deadlock in one topology. & \\
+        
+        \bottomrule
+    \end{tabular}
+\end{table}
