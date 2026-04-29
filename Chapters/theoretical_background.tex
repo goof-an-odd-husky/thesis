@@ -11,7 +11,7 @@ The functional data flow of this entire pipeline is illustrated in Figure~\ref{f
 
 \begin{figure}[htpb]
     \centering
-    \includesvg[width=0.9\textwidth]{figures/architecture.svg}
+    \includegraphics[width=0.9\textwidth]{figures/architecture.pdf}
     \caption{Functional data flow.}
     \label{fig:system_block_diagram}
 \end{figure}
@@ -91,7 +91,7 @@ For a global planner to generate paths, the environment is abstracted into a dir
 
 \begin{figure}[htpb]
     \centering
-    \includesvg[width=0.7\textwidth]{figures/park_representation.svg}
+    \includegraphics[width=0.7\textwidth]{figures/park_representation.pdf}
     \caption{Difference between Occupancy Grid and Semantic Map.}
     \label{fig:map_to_graph}
 \end{figure}
@@ -199,7 +199,7 @@ Because the displacement vector lies in the $xy$-plane, the cross products reduc
 \begin{figure}[htpb]
     \centering
     \begin{tikzpicture}[
-        scale=1.2,
+        scale=1.1,
         pose/.style={circle, draw=black, fill=gray!20, minimum size=0.6cm, inner sep=0pt},
         vector/.style={-Stealth, thick},
         angle_arc/.style={darkgray, ->, thick},

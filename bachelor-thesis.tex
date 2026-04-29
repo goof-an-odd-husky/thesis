@@ -38,7 +38,7 @@ headsepline, % Uncomment to get a line under the header
 ]{BachelorMasterThesis}
 
 \usepackage[utf8]{inputenc} % Required for inputting international characters
-\usepackage[T1, T2A]{fontenc} % Output font encoding for international characters
+\usepackage[T1,T2A]{fontenc} % Output font encoding for international characters
 
 \usepackage[ukrainian, english]{babel}
 
@@ -51,11 +51,13 @@ headsepline, % Uncomment to get a line under the header
 
 \usepackage[autostyle=true]{csquotes} % Required to generate language-dependent quotes in the bibliography
 
+\usepackage{microtype}
+
 \usepackage{amsmath} % Math stuff
 
+% Nice visualization and tables
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta, positioning, shapes.geometric}
-\usepackage{svg}
 \usepackage{booktabs}
 \usepackage{multirow}
 
@@ -68,6 +70,7 @@ headsepline, % Uncomment to get a line under the header
 	bottom=1.5cm,
 	%showframe, % Uncomment to show how the type block is set on the page
 }
+\setlength{\emergencystretch}{3em}
 
 \thesistitle{Autonomous Ground Navigation and Dynamic Obstacle Avoidance for Husky Robot in Pedestrian Areas}
 \supervisor{1}{Oleg \textsc{Farenyuk}}{https://indrekis.github.io}
@@ -276,7 +279,7 @@ $\omega$ & Angular velocity & \si{\radian\per\second} \\
 
 \pagestyle{thesis} % Return the page headers back to the "thesis" style
 
-\input{Chapters/introduction}
+\include{Chapters/introduction}
 \include{Chapters/related_work} 
 \include{Chapters/theoretical_background}
 \include{Chapters/proposed_solution} 
